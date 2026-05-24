@@ -289,15 +289,16 @@ class PocketOptionConnector:
                 # Tenta formato "session" (ChipaDevTeam / ci_session cookie) primeiro.
                 # O "sessionToken" é vinculado ao IP do browser — não funciona de VPS.
                 logger.info("Socket.IO conectado — enviando auth")
-                uid_val = int(self._uid) if self._uid.isdigit() else self._uid
-                # "session" = POCKET_SECRET (b0f01b9e...) — mesmo token que o
-                # browser envia como "sessionToken". O ci_session cookie vai
-                # apenas no header HTTP do upgrade, não no payload de auth.
+                # Formato exato do browser (agora com credenciais reais).
+                # As tentativas anteriores com sessionToken tinham uid/secret placeholders.
+                url_path = ("cabinet/demo-quick-high-low"
+                            if self._demo else "cabinet/quick-high-low")
                 auth = json.dumps(["auth", {
-                    "session":  self._secret,
-                    "isDemo":   _DEMO_VALUE[self._demo],
-                    "uid":      uid_val,
-                    "platform": 1,
+                    "sessionToken": self._secret,
+                    "uid":          self._uid,
+                    "lang":         "en",
+                    "currentUrl":   url_path,
+                    "isChart":      1,
                 }])
                 ws.send(f"42{auth}")
 
