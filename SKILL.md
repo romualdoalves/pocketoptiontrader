@@ -297,14 +297,26 @@ Break-even (payout 85%): win_rate > 54.05%
 - **Docker + Traefik:** Pré-instalados
 - **Subdomínio:** `pocketoption.tradixio.com`
 - **TLS:** Let's Encrypt via Traefik (automático)
+- **Path no VPS:** `/opt/pocketoption` (todos os projetos Hostinger em `/opt`)
 
-### Deploy rápido no VPS
+### Deploy inicial no VPS
 ```bash
-git clone https://github.com/romualdoalves/pocketoptiontrader.git
-cd pocketoptiontrader
-cp .env.example .env
-# editar .env com credenciais PocketOption
-docker compose -f docker-compose.yml -f docker-compose.traefik.yml up -d
+git clone https://github.com/romualdoalves/pocketoptiontrader.git /opt/pocketoption
+cd /opt/pocketoption
+cp .env.example .env && nano .env   # preencher credenciais PocketOption
+docker compose -f docker-compose.yml -f docker-compose.traefik.yml up -d --build
+```
+
+### Atualização
+```bash
+cd /opt/pocketoption && git pull
+docker compose -f docker-compose.yml -f docker-compose.traefik.yml up -d --build
+```
+
+### Logs em tempo real
+```bash
+docker compose logs -f bot        # bot runner
+docker compose logs -f streamlit  # UI
 ```
 
 ### Labels Traefik (API FastAPI na porta 8000)

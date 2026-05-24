@@ -1,17 +1,17 @@
 """
 Gerenciador de trades binários na PocketOption.
 
-Conceito central de sincronização de expiração:
-  Na PocketOption, ao selecionar expiração de 1 minuto, o trade expira no
-  próximo limite de minuto inteiro (ex: 10:00:45 → expira às 10:01:00).
-  Isso garante que Order1 (t1) e Order2 (t2) expirem exatamente em t3,
-  mesmo que t1 ≠ t2.
+Sincronização de t3:
+  Na PocketOption, expirations_mode=1 (1 minuto) sincroniza automaticamente
+  com o próximo limite de minuto inteiro. Ordem colocada às 10:00:45 expira
+  às 10:01:00, igual a uma ordem colocada às 10:00:10.
+  Isso garante que Order1 (t1) e Order2 (t2) expirem no mesmo t3.
 """
 import math
 import time
 import logging
 from dataclasses import dataclass
-from typing import Optional, Tuple
+from typing import Optional
 
 from .connector import PocketOptionConnector
 
@@ -23,7 +23,7 @@ class TradeResult:
     order_id: str
     direction: str
     stake: float
-    profit: float          # positivo se win, negativo se loss
+    profit: float          # positivo se win, negativo/zero se loss
     status: str            # "win" | "loss" | "draw" | "timeout"
     close_price: float = 0.0
 
@@ -31,70 +31,67 @@ class TradeResult:
 class TradeManager:
     """
     Executa e monitora trades binários.
-    Todos os trades usam expiração de 1 minuto sincronizada com o
-    próximo limite de minuto para garantir t3 igual para Order1 e Order2.
+    Interface de alto nível sobre o PocketOptionConnector.
     """
 
-    POLL_INTERVAL = 0.5     # segundos entre verificações de resultado
-    RESULT_EXTRA_TTL = 8.0  # segundos após t3 para aguardar resultado
+    POLL_INTERVAL    = 0.5   # segundos entre verificações de resultado
+    RESULT_EXTRA_TTL = 10.0  # segundos além de t3 para aguardar resultado
 
     def __init__(self, connector: PocketOptionConnector) -> None:
         self._conn = connector
 
-    # ── Sincronização de tempo ────────────────────────────────────────────────
+    # ── Tempo ─────────────────────────────────────────────────────────────────
 
     @staticmethod
     def next_minute_boundary() -> float:
-        """Retorna o Unix timestamp do próximo limite de minuto inteiro (t3)."""
+        """Próximo limite de minuto inteiro (t3)."""
         return math.ceil(time.time() / 60) * 60
 
     @staticmethod
     def seconds_until(target: float) -> float:
         return max(0.0, target - time.time())
 
-    # ── Execução de trade ─────────────────────────────────────────────────────
+    # ── Execução ──────────────────────────────────────────────────────────────
 
     def place_trade(
         self,
         asset: str,
         stake: float,
-        direction: str,  # "call" ou "put"
+        direction: str,   # "call" | "put"
         expiry_timestamp: float,
     ) -> Optional[str]:
         """
-        Coloca um trade binário expirando em expiry_timestamp.
-
-        A PocketOption sincroniza expirations_mode=1 com o próximo limite
-        de minuto — ambas as ordens no mesmo minuto expiram em t3 idêntico.
-
-        Edge case C: retorna None se restar < 15s para t3.
-        Edge case A: retorna None se a ordem for rejeitada pela plataforma.
+        Coloca um trade binário com expiração de 1 minuto sincronizada com t3.
+        Edge case C: bloqueia se restar < 15s até t3.
+        Edge case A: retorna None se a plataforma rejeitar.
         """
         seconds_left = self.seconds_until(expiry_timestamp)
         if seconds_left < 15:
             logger.warning(
-                "place_trade bloqueado: apenas %.0fs até a expiração (mínimo: 15s)", seconds_left
+                "place_trade bloqueado: %.0fs até expiração (mínimo 15s)", seconds_left
             )
             return None
 
         try:
-            check, order_id = self._conn.api.buy(
+            accepted, order_id = self._conn.buy(
                 amount=float(stake),
                 active=asset,
                 action=direction,
-                expirations_mode=1,  # 1 minuto — plataforma sincroniza com t3
+                expirations_mode=1,
             )
         except Exception as exc:
-            logger.error("buy() lançou exceção: %s", exc)
+            logger.error("Erro em buy(): %s", exc)
             self._conn.reconnect()
             return None
 
-        if not check:
-            logger.warning("Ordem rejeitada pela plataforma: %s %s stake=%.2f", direction, asset, stake)
+        if not accepted:
+            logger.warning("Ordem rejeitada: %s %s stake=%.2f", direction, asset, stake)
             return None
 
-        logger.info("Trade aberto: %s %s stake=%.2f id=%s (%.0fs até expiração)",
-                    direction.upper(), asset, stake, order_id, seconds_left)
+        logger.info(
+            "Trade aberto: %s %s stake=%.2f id=%s (%.0fs até expiração)",
+            direction.upper(), asset, stake, order_id, seconds_left,
+        )
         return str(order_id)
 
     # ── Resultado ─────────────────────────────────────────────────────────────
@@ -107,31 +104,29 @@ class TradeManager:
         direction: str = "",
     ) -> Optional[TradeResult]:
         """
-        Aguarda o resultado do trade por polling até expiry + RESULT_EXTRA_TTL.
-        Retorna None em caso de timeout.
+        Faz polling até o resultado chegar (max expiry + RESULT_EXTRA_TTL).
+        Retorna TradeResult com status "timeout" se não houver resultado.
         """
         deadline = expiry_timestamp + self.RESULT_EXTRA_TTL
 
         while time.time() < deadline:
-            try:
-                status_raw, profit = self._conn.api.check_win(order_id)
-                # pocketoptionapi retorna "win", "loose" (typo na lib) ou None/"processing"
-                if status_raw in ("win", "loose", "loss"):
-                    status = "win" if status_raw == "win" else "loss"
-                    logger.info("Resultado trade %s: %s profit=%.4f", order_id, status, profit)
-                    return TradeResult(
-                        order_id=order_id,
-                        direction=direction,
-                        stake=stake,
-                        profit=float(profit) if profit is not None else 0.0,
-                        status=status,
-                    )
-            except Exception as exc:
-                logger.debug("check_win(%s): %s", order_id, exc)
+            status_raw, profit = self._conn.check_win(order_id)
+
+            if status_raw is not None:
+                logger.info(
+                    "Resultado %s: %s profit=%.4f", order_id, status_raw, profit
+                )
+                return TradeResult(
+                    order_id=order_id,
+                    direction=direction,
+                    stake=stake,
+                    profit=float(profit),
+                    status=status_raw,
+                )
 
             time.sleep(self.POLL_INTERVAL)
 
-        logger.warning("Timeout aguardando resultado do trade %s", order_id)
+        logger.warning("Timeout aguardando resultado da ordem %s", order_id)
         return TradeResult(
             order_id=order_id,
             direction=direction,

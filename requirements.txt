@@ -1,25 +1,23 @@
-# ── PocketOption ──────────────────────────────────────────────────────────────
-pocketoptionapi>=1.0.0          # Conector WebSocket PocketOption (SSID auth)
-websocket-client>=1.6.0         # Dependência do pocketoptionapi
+# ── PocketOption WebSocket (conector nativo, sem biblioteca de terceiros) ─────
+python-socketio[client]>=5.10.0  # Cliente Socket.IO (protocolo usado pela PocketOption)
+websocket-client>=1.6.0          # Transporte WebSocket para python-socketio
+aiohttp>=3.9.0                   # Dependência do socketio async
 
 # ── UI e Dashboard ────────────────────────────────────────────────────────────
-streamlit>=1.35.0               # Painel de controle (app_streamlit.py)
+streamlit>=1.35.0
 
 # ── Banco de dados ────────────────────────────────────────────────────────────
-sqlalchemy>=2.0.0               # ORM PostgreSQL
-psycopg2-binary>=2.9.0          # Driver PostgreSQL
-python-dotenv>=1.0.0            # Carregamento do .env
+sqlalchemy>=2.0.0
+psycopg2-binary>=2.9.0
+python-dotenv>=1.0.0
 
 # ── Data e Analysis ───────────────────────────────────────────────────────────
 pandas>=2.0.0
 numpy>=1.24.0
 
 # ── AI / Otimização ───────────────────────────────────────────────────────────
-anthropic>=0.40.0               # Level 4D — Claude API meta-review
-optuna>=3.5.0                   # Level 4B — Bayesian hyperparameter search
+anthropic>=0.40.0
+optuna>=3.5.0
 
 # ── Deep Learning (Strategy 3 LSTM — opcional) ────────────────────────────────
-# torch>=2.0.0                  # Descomentar se usar Strategy 3 LSTM
-
-# ── Referência Alpaca (estratégias herdadas — opcional) ───────────────────────
-# alpaca-py>=0.20.0             # Descomentar se usar Strategy 2/3 em Alpaca
+# torch>=2.0.0

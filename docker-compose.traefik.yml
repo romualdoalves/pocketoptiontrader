@@ -1,5 +1,14 @@
 # Overlay de produção para VPS Hostinger KVM4 com Traefik pré-instalado.
-# Uso: docker compose -f docker-compose.yml -f docker-compose.traefik.yml up -d
+# Projeto em: /opt/pocketoption
+#
+# Deploy inicial:
+#   git clone https://github.com/romualdoalves/pocketoptiontrader.git /opt/pocketoption
+#   cd /opt/pocketoption && cp .env.example .env && nano .env
+#   docker compose -f docker-compose.yml -f docker-compose.traefik.yml up -d --build
+#
+# Atualização:
+#   cd /opt/pocketoption && git pull
+#   docker compose -f docker-compose.yml -f docker-compose.traefik.yml up -d --build
 #
 # Pré-requisitos no VPS:
 #   - Traefik rodando com network "traefik_net" e certresolver "letsencrypt"
