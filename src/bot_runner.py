@@ -36,10 +36,11 @@ from src.pocket_option.data_feed import DataFeed
 from src.pocket_option.trade_manager import TradeManager
 from src.strategies.range_sniper import RangeSniper, RangeSniperConfig, CycleRecord
 from src.db.session import init_db, get_session
-from src.db.models import Configuracao, CicloOperacao
+from src.db.models import Configuracao, BotStatus, CicloOperacao
 
 
-CONFIG_POLL_INTERVAL = 10  # segundos entre leituras de status_bot
+CONFIG_POLL_INTERVAL = 10   # segundos entre leituras de status_bot
+STATUS_WRITE_INTERVAL = 30  # segundos entre escritas de BotStatus
 
 
 def load_config(session) -> Configuracao:
@@ -73,6 +74,29 @@ def persist_cycle(cycle: CycleRecord) -> None:
         session.add(row)
 
 
+def upsert_bot_status(
+    saldo: float | None,
+    saldo_inicial: float | None,
+    payout_atual: float | None,
+    ultimo_preco: float | None,
+    status_conexao: str,
+    ciclos_sessao: int,
+    pnl_sessao: float,
+) -> None:
+    with get_session() as session:
+        row = session.query(BotStatus).order_by(BotStatus.id.desc()).first()
+        if row is None:
+            row = BotStatus()
+            session.add(row)
+        row.saldo           = saldo
+        row.saldo_inicial   = saldo_inicial
+        row.payout_atual    = payout_atual
+        row.ultimo_preco    = ultimo_preco
+        row.status_conexao  = status_conexao
+        row.ciclos_sessao   = ciclos_sessao
+        row.pnl_sessao      = pnl_sessao
+
+
 def build_sniper_config(db_cfg: Configuracao) -> RangeSniperConfig:
     return RangeSniperConfig(
         asset=db_cfg.ativo,
@@ -99,6 +123,8 @@ def main() -> None:
     trade_manager = TradeManager(connector)
     sniper: RangeSniper | None = None
     last_config_id: int = -1
+    saldo_inicial: float | None = None
+    last_status_write: float = 0.0
 
     while True:
         try:
@@ -112,6 +138,15 @@ def main() -> None:
                 if sniper and sniper.is_running:
                     sniper.stop()
                     logger.info("Bot parado via UI")
+                upsert_bot_status(
+                    saldo=connector.get_balance(),
+                    saldo_inicial=saldo_inicial,
+                    payout_atual=None,
+                    ultimo_preco=None,
+                    status_conexao="conectado" if connector.is_connected() else "desconectado",
+                    ciclos_sessao=0,
+                    pnl_sessao=0.0,
+                )
                 time.sleep(CONFIG_POLL_INTERVAL)
                 continue
 
@@ -124,6 +159,7 @@ def main() -> None:
                 sniper_cfg = build_sniper_config(db_cfg)
                 sniper = RangeSniper(trade_manager, feed, sniper_cfg)
                 last_config_id = cfg_id
+                saldo_inicial = connector.get_balance()
                 logger.info("Sniper configurado: %s", sniper_cfg)
 
             if not sniper.is_running:
@@ -134,6 +170,28 @@ def main() -> None:
             if completed:
                 for cycle in completed[-5:]:  # últimos 5 a cada poll
                     persist_cycle(cycle)
+
+            # Atualiza BotStatus periodicamente
+            now = time.monotonic()
+            if now - last_status_write >= STATUS_WRITE_INTERVAL:
+                cycles_all = sniper.get_cycles() if sniper else []
+                pnl = sum(c.resultado_financeiro or 0 for c in cycles_all)
+                try:
+                    saldo_atual = connector.get_balance()
+                    payout_atual = feed.get_payout(db_cfg.ativo)
+                    ultimo_preco = feed.get_current_price(db_cfg.ativo)
+                except Exception:
+                    saldo_atual = payout_atual = ultimo_preco = None
+                upsert_bot_status(
+                    saldo=saldo_atual,
+                    saldo_inicial=saldo_inicial,
+                    payout_atual=payout_atual,
+                    ultimo_preco=ultimo_preco,
+                    status_conexao="conectado" if connector.is_connected() else "desconectado",
+                    ciclos_sessao=len(cycles_all),
+                    pnl_sessao=round(pnl, 4),
+                )
+                last_status_write = now
 
             time.sleep(CONFIG_POLL_INTERVAL)
 

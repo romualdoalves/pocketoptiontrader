@@ -17,7 +17,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 from src.db.session import init_db, get_session
-from src.db.models import Configuracao, CicloOperacao
+from src.db.models import Configuracao, BotStatus, CicloOperacao
 
 logging.basicConfig(level=logging.WARNING)
 
@@ -111,6 +111,12 @@ def update_config(**kwargs) -> None:
         cfg = session.query(Configuracao).order_by(Configuracao.id.desc()).first()
         for k, v in kwargs.items():
             setattr(cfg, k, v)
+
+
+def get_bot_status() -> dict | None:
+    with get_session() as session:
+        row = session.query(BotStatus).order_by(BotStatus.id.desc()).first()
+        return row.to_dict() if row else None
 
 
 def get_recent_cycles(limit: int = 200) -> list[dict]:
@@ -242,6 +248,55 @@ with st.sidebar:
 # ── Dashboard principal ───────────────────────────────────────────────────────
 
 st.markdown("# 📊 Dashboard — Range Sniper")
+
+# ── Indicadores ao vivo (BotStatus) ──────────────────────────────────────────
+
+bot_st = get_bot_status()
+
+live1, live2, live3, live4, live5 = st.columns(5)
+
+if bot_st:
+    saldo         = bot_st.get("saldo")
+    saldo_inicial = bot_st.get("saldo_inicial")
+    delta_saldo   = round(saldo - saldo_inicial, 2) if saldo is not None and saldo_inicial else None
+    payout_vivo   = bot_st.get("payout_atual")
+    preco_vivo    = bot_st.get("ultimo_preco")
+    conn          = bot_st.get("status_conexao", "desconectado")
+    pnl_s         = bot_st.get("pnl_sessao", 0.0)
+    atualizado    = bot_st.get("atualizado_em")
+
+    live1.metric(
+        "Balance (USD)",
+        f"${saldo:.2f}" if saldo is not None else "—",
+        delta=f"{delta_saldo:+.2f}" if delta_saldo is not None else None,
+    )
+    live2.metric("Payout ao vivo",   f"{payout_vivo*100:.0f}%" if payout_vivo else "—")
+    live3.metric("Último preço",     f"{preco_vivo:.5f}" if preco_vivo else "—")
+    live4.metric(
+        "P&L Sessão (USD)",
+        f"${pnl_s:.2f}",
+        delta=f"{pnl_s:+.2f}" if pnl_s else None,
+    )
+    conn_badge = (
+        '<span class="status-active">● Conectado</span>'
+        if conn == "conectado"
+        else '<span class="status-inactive">● Desconectado</span>'
+    )
+    with live5:
+        st.markdown("**Conexão**")
+        st.markdown(conn_badge, unsafe_allow_html=True)
+        if atualizado:
+            st.caption(f"Atualizado: {atualizado[:19]}")
+else:
+    live1.metric("Balance (USD)", "—")
+    live2.metric("Payout ao vivo", "—")
+    live3.metric("Último preço", "—")
+    live4.metric("P&L Sessão (USD)", "—")
+    with live5:
+        st.markdown("**Conexão**")
+        st.markdown('<span class="status-inactive">● Aguardando bot</span>', unsafe_allow_html=True)
+
+st.divider()
 
 cycles = get_recent_cycles(200)
 stats  = compute_stats(cycles)

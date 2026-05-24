@@ -43,6 +43,36 @@ class Configuracao(Base):
         }
 
 
+class BotStatus(Base):
+    """
+    Estado em tempo real do bot — escrito pelo bot_runner a cada ciclo.
+    Lido pela UI Streamlit para exibir indicadores ao vivo.
+    """
+    __tablename__ = "bot_status"
+
+    id              = Column(Integer, primary_key=True, autoincrement=True)
+    saldo           = Column(Float,   nullable=True)   # balance conta PocketOption
+    saldo_inicial   = Column(Float,   nullable=True)   # saldo ao iniciar a sessão
+    payout_atual    = Column(Float,   nullable=True)   # payout % do ativo configurado
+    ultimo_preco    = Column(Float,   nullable=True)   # último preço do ativo
+    status_conexao  = Column(String(20), default="desconectado")  # conectado/desconectado
+    ciclos_sessao   = Column(Integer, default=0)       # ciclos desde último start
+    pnl_sessao      = Column(Float,   default=0.0)     # P&L desde último start
+    atualizado_em   = Column(DateTime, default=func.now(), onupdate=func.now())
+
+    def to_dict(self) -> dict:
+        return {
+            "saldo":          self.saldo,
+            "saldo_inicial":  self.saldo_inicial,
+            "payout_atual":   self.payout_atual,
+            "ultimo_preco":   self.ultimo_preco,
+            "status_conexao": self.status_conexao,
+            "ciclos_sessao":  self.ciclos_sessao,
+            "pnl_sessao":     self.pnl_sessao,
+            "atualizado_em":  self.atualizado_em.isoformat() if self.atualizado_em else None,
+        }
+
+
 class CicloOperacao(Base):
     """
     Registro de um ciclo completo (1 par de ordens ou ciclo ignorado).
