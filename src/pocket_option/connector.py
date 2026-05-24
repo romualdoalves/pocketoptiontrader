@@ -59,9 +59,10 @@ class PocketOptionConnector:
     CONNECT_TIMEOUT     = 30
 
     def __init__(self) -> None:
-        self._ssid   = os.environ["POCKET_SSID"]
-        self._uid    = os.environ.get("POCKET_UID", "")
-        self._demo   = bool(int(os.environ.get("POCKET_DEMO", "1")))
+        self._ssid    = os.environ.get("POCKET_SSID", "")          # cookie ci_session (header HTTP)
+        self._secret  = os.environ["POCKET_SECRET"]                 # sessionToken para auth WS
+        self._uid     = os.environ.get("POCKET_UID", "")
+        self._demo    = bool(int(os.environ.get("POCKET_DEMO", "1")))
 
         self._ws: Optional[websocket.WebSocketApp] = None
         self._ws_thread: Optional[threading.Thread] = None
@@ -229,6 +230,19 @@ class PocketOptionConnector:
         logger.debug("TCP/TLS aberto — enviando Socket.IO CONNECT (40)")
         ws.send("40")
 
+    def _start_ping_loop(self, ws) -> None:
+        """Envia 42["ping-server"] periodicamente, como o browser faz."""
+        def _loop():
+            while self._connected:
+                time.sleep(25)
+                if self._connected:
+                    try:
+                        ws.send('42["ping-server"]')
+                    except Exception:
+                        break
+        t = threading.Thread(target=_loop, daemon=True, name="ws-ping")
+        t.start()
+
     def _on_message(self, ws, message: str) -> None:
         logger.debug("[WS raw] %s", message[:300])
 
@@ -244,10 +258,14 @@ class PocketOptionConnector:
             elif message.startswith("40"):
                 # Socket.IO CONNECT confirmado — autenticar
                 logger.info("Socket.IO conectado — enviando auth")
+                url_path = ("cabinet/demo-quick-high-low"
+                            if self._demo else "cabinet/quick-high-low")
                 auth = json.dumps(["auth", {
-                    "session": self._ssid,
-                    "uid":     self._uid,
-                    "isDemo":  _DEMO_VALUE[self._demo],
+                    "sessionToken": self._secret,
+                    "uid":          self._uid,
+                    "lang":         "en",
+                    "currentUrl":   url_path,
+                    "isChart":      1,
                 }])
                 ws.send(f"42{auth}")
 
@@ -275,11 +293,12 @@ class PocketOptionConnector:
     def _handle_event(self, event: str, data) -> None:
         logger.debug("[event] %s → %s", event, str(data)[:200])
 
-        # Autenticação confirmada
-        if event in ("successAuth", "successauth", "authenticated"):
+        # Autenticação confirmada — evento real do servidor
+        if event in ("auth/success", "successAuth", "successauth", "authenticated"):
             self._connected = True
             self._connect_evt.set()
-            logger.info("Autenticado com sucesso")
+            self._start_ping_loop(self._ws)
+            logger.info("Autenticado com sucesso (evento: %s)", event)
 
         # Saldo — também serve como confirmação de auth bem-sucedida
         elif event in ("balance", "updateBalance"):
