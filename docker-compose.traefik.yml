@@ -11,7 +11,7 @@
 #   docker compose -f docker-compose.yml -f docker-compose.traefik.yml up -d --build
 #
 # Pré-requisitos no VPS:
-#   - Traefik rodando com network "traefik-public" e certresolver "letsencrypt"
+#   - Traefik rodando com network "traefik-public" e certresolver "myresolver"
 #   - DNS de pocketoption.tradixio.com apontando para o IP do VPS
 #   - Arquivo .env preenchido com credenciais PocketOption
 
@@ -30,7 +30,7 @@ services:
       # Router HTTPS
       - "traefik.http.routers.potrader.rule=Host(`pocketoption.tradixio.com`)"
       - "traefik.http.routers.potrader.entrypoints=websecure"
-      - "traefik.http.routers.potrader.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.potrader.tls.certresolver=myresolver"
 
       # Service
       - "traefik.http.services.potrader.loadbalancer.server.port=8501"
