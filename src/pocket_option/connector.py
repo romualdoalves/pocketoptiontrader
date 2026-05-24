@@ -21,12 +21,27 @@ import websocket
 
 logger = logging.getLogger(__name__)
 
-# ── URLs — path e query obrigatórios ─────────────────────────────────────────
+# ── URLs regionais (fonte: ChipaDevTeam/PocketOptionAPI constants.py) ────────
+# Demo primeiro — se _demo=True; real primeiro — se _demo=False
 
-_WS_URLS = [
-    "wss://api.po.market/socket.io/?EIO=4&transport=websocket",
-    "wss://trading.po.market/socket.io/?EIO=4&transport=websocket",
-    "wss://ws.pocketoption.com/socket.io/?EIO=4&transport=websocket",
+_WS_URLS_DEMO = [
+    "wss://demo-api-eu.po.market/socket.io/?EIO=4&transport=websocket",
+    "wss://try-demo-eu.po.market/socket.io/?EIO=4&transport=websocket",
+    "wss://api-eu.po.market/socket.io/?EIO=4&transport=websocket",
+    "wss://api-l.po.market/socket.io/?EIO=4&transport=websocket",
+    "wss://api-fr.po.market/socket.io/?EIO=4&transport=websocket",
+    "wss://api-sc.po.market/socket.io/?EIO=4&transport=websocket",
+]
+
+_WS_URLS_REAL = [
+    "wss://api-eu.po.market/socket.io/?EIO=4&transport=websocket",
+    "wss://api-l.po.market/socket.io/?EIO=4&transport=websocket",
+    "wss://api-us-north.po.market/socket.io/?EIO=4&transport=websocket",
+    "wss://api-fr.po.market/socket.io/?EIO=4&transport=websocket",
+    "wss://api-sc.po.market/socket.io/?EIO=4&transport=websocket",
+    "wss://api-hk.po.market/socket.io/?EIO=4&transport=websocket",
+    "wss://api-msk.po.market/socket.io/?EIO=4&transport=websocket",
+    "wss://api-in.po.market/socket.io/?EIO=4&transport=websocket",
 ]
 
 _BROWSER_HEADERS = [
@@ -88,9 +103,10 @@ class PocketOptionConnector:
         self._connected = False
 
         headers = _BROWSER_HEADERS + [f"Cookie: ci_session={self._ssid}"]
+        urls = _WS_URLS_DEMO if self._demo else _WS_URLS_REAL
 
         connected = False
-        for url in _WS_URLS:
+        for url in urls:
             try:
                 logger.info("Tentando conectar em %s (demo=%s)", url, self._demo)
                 self._ws = websocket.WebSocketApp(
