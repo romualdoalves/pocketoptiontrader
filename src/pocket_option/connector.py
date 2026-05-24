@@ -273,15 +273,15 @@ class PocketOptionConnector:
 
             elif message.startswith("40"):
                 # Socket.IO CONNECT confirmado — autenticar
+                # Tenta formato "session" (ChipaDevTeam / ci_session cookie) primeiro.
+                # O "sessionToken" é vinculado ao IP do browser — não funciona de VPS.
                 logger.info("Socket.IO conectado — enviando auth")
-                url_path = ("cabinet/demo-quick-high-low"
-                            if self._demo else "cabinet/quick-high-low")
+                uid_val = int(self._uid) if self._uid.isdigit() else self._uid
                 auth = json.dumps(["auth", {
-                    "sessionToken": self._secret,
-                    "uid":          self._uid,
-                    "lang":         "en",
-                    "currentUrl":   url_path,
-                    "isChart":      1,
+                    "session":  self._ssid,
+                    "isDemo":   _DEMO_VALUE[self._demo],
+                    "uid":      uid_val,
+                    "platform": 1,
                 }])
                 ws.send(f"42{auth}")
 
@@ -307,10 +307,12 @@ class PocketOptionConnector:
     # ── Despacho de eventos ───────────────────────────────────────────────────
 
     def _handle_event(self, event: str, data) -> None:
-        logger.debug("[event] %s → %s", event, str(data)[:200])
+        # Loga TODOS os eventos no nível INFO enquanto depuramos o protocolo
+        logger.info("[event] %s → %s", event, str(data)[:300])
 
-        # Autenticação confirmada — evento real do servidor
-        if event in ("auth/success", "successAuth", "successauth", "authenticated"):
+        # Autenticação confirmada
+        if event in ("auth/success", "successAuth", "successauth",
+                     "authenticated", "success", "authSuccess"):
             self._connected = True
             self._connect_evt.set()
             self._start_ping_loop(self._ws)
