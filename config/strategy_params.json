@@ -1,0 +1,11 @@
+{
+  "trailing_stop_pct": 3.0,
+  "ladder_drop_1": 2.0,
+  "ladder_drop_2": 4.0,
+  "ladder_drop_3": 6.0,
+  "position_size_pct": 5.0,
+  "wheel_target_delta": 0.30,
+  "wheel_dte": 30,
+  "min_iv_threshold": 40.0,
+  "copy_trade_min_usd": 15000
+}

@@ -1,0 +1,21 @@
+# Credentials — NEVER commit these
+.env
+secrets/
+*.json.key
+gcp_service_account.json
+
+# Freqtrade runtime data
+user_data/tradesv3.sqlite
+user_data/logs/
+user_data/data/
+user_data/backtest_results/
+user_data/hyperopts/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+
+# Grafana state
+grafana_data/

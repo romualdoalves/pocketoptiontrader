@@ -1,0 +1,411 @@
+{
+  "__inputs": [],
+  "__requires": [
+    { "type": "grafana", "id": "grafana", "name": "Grafana", "version": "10.0.0" },
+    { "type": "datasource", "id": "doitintl-bigquery-datasource", "name": "BigQuery", "version": "1.0.0" }
+  ],
+  "annotations": { "list": [] },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [
+    {
+      "icon": "external link",
+      "title": "Trading Overview",
+      "type": "link",
+      "url": "/d/alpacatrader-overview",
+      "tooltip": "Back to main dashboard"
+    }
+  ],
+  "liveNow": false,
+
+  "templating": {
+    "list": [
+      {
+        "name": "trade_key",
+        "label": "Select Trade",
+        "type": "query",
+        "datasource": { "type": "doitintl-bigquery-datasource", "uid": "BigQuery" },
+        "query": {
+          "rawQuery": true,
+          "rawSql": "SELECT trade_key FROM `${GCP_PROJECT_ID}.alpacatrader.trade_narratives` WHERE close_date IS NOT NULL ORDER BY close_date DESC LIMIT 200"
+        },
+        "refresh": 2,
+        "sort": 0,
+        "multi": false,
+        "includeAll": false,
+        "current": {}
+      },
+      {
+        "name": "pair",
+        "label": "Pair Filter",
+        "type": "query",
+        "datasource": { "type": "doitintl-bigquery-datasource", "uid": "BigQuery" },
+        "query": {
+          "rawQuery": true,
+          "rawSql": "SELECT DISTINCT pair FROM `${GCP_PROJECT_ID}.alpacatrader.trade_narratives` ORDER BY pair"
+        },
+        "refresh": 2,
+        "multi": true,
+        "includeAll": true,
+        "current": {}
+      }
+    ]
+  },
+
+  "panels": [
+
+    {
+      "id": 1,
+      "type": "text",
+      "title": "Trade Narrative (YouTube Script)",
+      "description": "Select a trade from the top dropdown. The bot's 'state of mind' at entry and exit appears here — ready to read on camera.",
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 0 },
+      "datasource": { "type": "doitintl-bigquery-datasource", "uid": "BigQuery" },
+      "options": {
+        "mode": "markdown",
+        "content": "**Select a trade using the dropdown above to see the narrative.**\n\nOnce selected, the bot's full technical explanation will appear here.\n\nFormat:\n```\n[Strategy2 Analysis | WIN/LOSS] LONG entry on BTC/USD motivated by TRENDING regime...\n---PT---\n[Análise Strategy2 | WIN/LOSS] Entrada LONG em BTC/USD motivada por regime TRENDING...\n```"
+      },
+      "targets": [
+        {
+          "rawQuery": true,
+          "rawSql": "SELECT narrative_text FROM `${GCP_PROJECT_ID}.alpacatrader.trade_narratives` WHERE trade_key = '${trade_key}' LIMIT 1",
+          "format": "table"
+        }
+      ]
+    },
+
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "Entry Price",
+      "gridPos": { "h": 3, "w": 3, "x": 0, "y": 8 },
+      "datasource": { "type": "doitintl-bigquery-datasource", "uid": "BigQuery" },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "colorMode": "value", "graphMode": "none", "unit": "currencyUSD"
+      },
+      "targets": [{ "rawQuery": true, "rawSql": "SELECT open_rate AS value FROM `${GCP_PROJECT_ID}.alpacatrader.trade_narratives` WHERE trade_key = '${trade_key}' LIMIT 1", "format": "table" }]
+    },
+
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "Exit Price",
+      "gridPos": { "h": 3, "w": 3, "x": 3, "y": 8 },
+      "datasource": { "type": "doitintl-bigquery-datasource", "uid": "BigQuery" },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "colorMode": "value", "graphMode": "none", "unit": "currencyUSD"
+      },
+      "targets": [{ "rawQuery": true, "rawSql": "SELECT close_rate AS value FROM `${GCP_PROJECT_ID}.alpacatrader.trade_narratives` WHERE trade_key = '${trade_key}' LIMIT 1", "format": "table" }]
+    },
+
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "P&L (%)",
+      "gridPos": { "h": 3, "w": 3, "x": 6, "y": 8 },
+      "datasource": { "type": "doitintl-bigquery-datasource", "uid": "BigQuery" },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "colorMode": "background", "graphMode": "none", "unit": "percent",
+        "thresholds": { "steps": [{ "color": "red", "value": null }, { "color": "green", "value": 0 }] }
+      },
+      "targets": [{ "rawQuery": true, "rawSql": "SELECT close_profit_pct AS value FROM `${GCP_PROJECT_ID}.alpacatrader.trade_narratives` WHERE trade_key = '${trade_key}' LIMIT 1", "format": "table" }]
+    },
+
+    {
+      "id": 5,
+      "type": "stat",
+      "title": "P&L (USD)",
+      "gridPos": { "h": 3, "w": 3, "x": 9, "y": 8 },
+      "datasource": { "type": "doitintl-bigquery-datasource", "uid": "BigQuery" },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "colorMode": "background", "graphMode": "none", "unit": "currencyUSD",
+        "thresholds": { "steps": [{ "color": "red", "value": null }, { "color": "green", "value": 0 }] }
+      },
+      "targets": [{ "rawQuery": true, "rawSql": "SELECT close_profit_abs AS value FROM `${GCP_PROJECT_ID}.alpacatrader.trade_narratives` WHERE trade_key = '${trade_key}' LIMIT 1", "format": "table" }]
+    },
+
+    {
+      "id": 6,
+      "type": "stat",
+      "title": "Regime",
+      "gridPos": { "h": 3, "w": 3, "x": 12, "y": 8 },
+      "datasource": { "type": "doitintl-bigquery-datasource", "uid": "BigQuery" },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "colorMode": "value", "graphMode": "none", "textMode": "value"
+      },
+      "targets": [{ "rawQuery": true, "rawSql": "SELECT regime AS value FROM `${GCP_PROJECT_ID}.alpacatrader.trade_narratives` WHERE trade_key = '${trade_key}' LIMIT 1", "format": "table" }]
+    },
+
+    {
+      "id": 7,
+      "type": "stat",
+      "title": "Exit Reason",
+      "gridPos": { "h": 3, "w": 3, "x": 15, "y": 8 },
+      "datasource": { "type": "doitintl-bigquery-datasource", "uid": "BigQuery" },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "colorMode": "value", "graphMode": "none", "textMode": "value"
+      },
+      "targets": [{ "rawQuery": true, "rawSql": "SELECT exit_reason AS value FROM `${GCP_PROJECT_ID}.alpacatrader.trade_narratives` WHERE trade_key = '${trade_key}' LIMIT 1", "format": "table" }]
+    },
+
+    {
+      "id": 8,
+      "type": "stat",
+      "title": "ADX at Entry",
+      "gridPos": { "h": 3, "w": 3, "x": 18, "y": 8 },
+      "datasource": { "type": "doitintl-bigquery-datasource", "uid": "BigQuery" },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "colorMode": "background", "graphMode": "none",
+        "thresholds": { "steps": [{ "color": "yellow", "value": 0 }, { "color": "green", "value": 25 }] }
+      },
+      "targets": [{ "rawQuery": true, "rawSql": "SELECT adx_at_entry AS value FROM `${GCP_PROJECT_ID}.alpacatrader.trade_narratives` WHERE trade_key = '${trade_key}' LIMIT 1", "format": "table" }]
+    },
+
+    {
+      "id": 9,
+      "type": "stat",
+      "title": "Z-Score at Entry",
+      "gridPos": { "h": 3, "w": 3, "x": 21, "y": 8 },
+      "datasource": { "type": "doitintl-bigquery-datasource", "uid": "BigQuery" },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "colorMode": "background", "graphMode": "none",
+        "thresholds": { "steps": [{ "color": "red", "value": 0 }, { "color": "yellow", "value": 1.5 }, { "color": "green", "value": 2.0 }] }
+      },
+      "targets": [{ "rawQuery": true, "rawSql": "SELECT z_score_at_entry AS value FROM `${GCP_PROJECT_ID}.alpacatrader.trade_narratives` WHERE trade_key = '${trade_key}' LIMIT 1", "format": "table" }]
+    },
+
+    {
+      "id": 10,
+      "type": "stat",
+      "title": "MFI at Entry",
+      "gridPos": { "h": 3, "w": 4, "x": 0, "y": 11 },
+      "datasource": { "type": "doitintl-bigquery-datasource", "uid": "BigQuery" },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "colorMode": "background", "graphMode": "none",
+        "thresholds": { "steps": [{ "color": "red", "value": 0 }, { "color": "green", "value": 20 }, { "color": "yellow", "value": 60 }, { "color": "red", "value": 80 }] }
+      },
+      "targets": [{ "rawQuery": true, "rawSql": "SELECT mfi_at_entry AS value FROM `${GCP_PROJECT_ID}.alpacatrader.trade_narratives` WHERE trade_key = '${trade_key}' LIMIT 1", "format": "table" }]
+    },
+
+    {
+      "id": 11,
+      "type": "stat",
+      "title": "VWAP Distance (%)",
+      "gridPos": { "h": 3, "w": 4, "x": 4, "y": 11 },
+      "datasource": { "type": "doitintl-bigquery-datasource", "uid": "BigQuery" },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "colorMode": "value", "graphMode": "none", "unit": "percent"
+      },
+      "targets": [{ "rawQuery": true, "rawSql": "SELECT vwap_distance_pct AS value FROM `${GCP_PROJECT_ID}.alpacatrader.trade_narratives` WHERE trade_key = '${trade_key}' LIMIT 1", "format": "table" }]
+    },
+
+    {
+      "id": 12,
+      "type": "stat",
+      "title": "EMA50 Slope (%)",
+      "gridPos": { "h": 3, "w": 4, "x": 8, "y": 11 },
+      "datasource": { "type": "doitintl-bigquery-datasource", "uid": "BigQuery" },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "colorMode": "background", "graphMode": "none", "unit": "percent",
+        "thresholds": { "steps": [{ "color": "red", "value": null }, { "color": "green", "value": 0 }] }
+      },
+      "targets": [{ "rawQuery": true, "rawSql": "SELECT ema50_slope AS value FROM `${GCP_PROJECT_ID}.alpacatrader.trade_narratives` WHERE trade_key = '${trade_key}' LIMIT 1", "format": "table" }]
+    },
+
+    {
+      "id": 13,
+      "type": "stat",
+      "title": "Structural Stop",
+      "gridPos": { "h": 3, "w": 4, "x": 12, "y": 11 },
+      "datasource": { "type": "doitintl-bigquery-datasource", "uid": "BigQuery" },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "colorMode": "value", "graphMode": "none", "unit": "currencyUSD"
+      },
+      "targets": [{ "rawQuery": true, "rawSql": "SELECT structural_stop AS value FROM `${GCP_PROJECT_ID}.alpacatrader.trade_narratives` WHERE trade_key = '${trade_key}' LIMIT 1", "format": "table" }]
+    },
+
+    {
+      "id": 14,
+      "type": "stat",
+      "title": "Liquidity Target",
+      "gridPos": { "h": 3, "w": 4, "x": 16, "y": 11 },
+      "datasource": { "type": "doitintl-bigquery-datasource", "uid": "BigQuery" },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "colorMode": "value", "graphMode": "none", "unit": "currencyUSD"
+      },
+      "targets": [{ "rawQuery": true, "rawSql": "SELECT liquidity_target AS value FROM `${GCP_PROJECT_ID}.alpacatrader.trade_narratives` WHERE trade_key = '${trade_key}' LIMIT 1", "format": "table" }]
+    },
+
+    {
+      "id": 15,
+      "type": "stat",
+      "title": "Funding Rate",
+      "gridPos": { "h": 3, "w": 4, "x": 20, "y": 11 },
+      "datasource": { "type": "doitintl-bigquery-datasource", "uid": "BigQuery" },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "colorMode": "background", "graphMode": "none", "unit": "percentunit",
+        "thresholds": { "steps": [{ "color": "green", "value": null }, { "color": "red", "value": 0.0001 }] }
+      },
+      "targets": [{ "rawQuery": true, "rawSql": "SELECT funding_rate AS value FROM `${GCP_PROJECT_ID}.alpacatrader.trade_narratives` WHERE trade_key = '${trade_key}' LIMIT 1", "format": "table" }]
+    },
+
+    {
+      "id": 20,
+      "type": "table",
+      "title": "All Narratives — Trade Log",
+      "description": "Full table of all XAI snapshots. Click trade_key to select in dropdown.",
+      "gridPos": { "h": 12, "w": 24, "x": 0, "y": 14 },
+      "datasource": { "type": "doitintl-bigquery-datasource", "uid": "BigQuery" },
+      "options": {
+        "sortBy": [{ "displayName": "close_date", "desc": true }]
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "close_profit_pct" },
+            "properties": [
+              { "id": "unit", "value": "percent" },
+              { "id": "custom.displayMode", "value": "color-background" },
+              { "id": "thresholds", "value": { "steps": [{ "color": "red", "value": null }, { "color": "green", "value": 0 }] }}
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "close_profit_abs" },
+            "properties": [{ "id": "unit", "value": "currencyUSD" }]
+          },
+          {
+            "matcher": { "id": "byName", "options": "narrative_text" },
+            "properties": [{ "id": "custom.width", "value": 600 }]
+          }
+        ]
+      },
+      "targets": [
+        {
+          "rawQuery": true,
+          "rawSql": "SELECT trade_key, pair, open_date, close_date, ROUND(open_rate, 2) AS open_rate, ROUND(close_rate, 2) AS close_rate, ROUND(close_profit_pct, 3) AS close_profit_pct, ROUND(close_profit_abs, 2) AS close_profit_abs, exit_reason, regime, ROUND(adx_at_entry, 1) AS adx, ROUND(z_score_at_entry, 2) AS z_score, entry_tag, SUBSTR(narrative_text, 1, 200) AS narrative_text FROM `${GCP_PROJECT_ID}.alpacatrader.trade_narratives` WHERE pair IN UNNEST(SPLIT('${pair}', ',')) OR '${pair}' = 'All' ORDER BY close_date DESC LIMIT 100",
+          "format": "table"
+        }
+      ]
+    },
+
+    {
+      "id": 30,
+      "type": "bargauge",
+      "title": "Z-Score Distribution at Entry",
+      "description": "Histogram of Z-Score values when trades were entered. Should cluster above 2.0 for Engine A.",
+      "gridPos": { "h": 7, "w": 12, "x": 0, "y": 26 },
+      "datasource": { "type": "doitintl-bigquery-datasource", "uid": "BigQuery" },
+      "options": { "orientation": "horizontal", "displayMode": "gradient" },
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": { "steps": [{ "color": "red", "value": 0 }, { "color": "yellow", "value": 1.5 }, { "color": "green", "value": 2.0 }] }
+        }
+      },
+      "targets": [
+        {
+          "rawQuery": true,
+          "rawSql": "SELECT CAST(ROUND(z_score_at_entry, 1) AS STRING) AS z_bucket, COUNT(*) AS count FROM `${GCP_PROJECT_ID}.alpacatrader.trade_narratives` WHERE close_date IS NOT NULL GROUP BY z_bucket ORDER BY z_bucket",
+          "format": "table"
+        }
+      ]
+    },
+
+    {
+      "id": 31,
+      "type": "piechart",
+      "title": "Entry Engine Breakdown",
+      "description": "Which engine fired more entries.",
+      "gridPos": { "h": 7, "w": 6, "x": 12, "y": 26 },
+      "datasource": { "type": "doitintl-bigquery-datasource", "uid": "BigQuery" },
+      "options": { "pieType": "donut", "displayLabels": ["name", "percent"] },
+      "targets": [
+        {
+          "rawQuery": true,
+          "rawSql": "SELECT entry_tag, COUNT(*) AS count FROM `${GCP_PROJECT_ID}.alpacatrader.trade_narratives` WHERE close_date IS NOT NULL GROUP BY entry_tag ORDER BY count DESC",
+          "format": "table"
+        }
+      ]
+    },
+
+    {
+      "id": 32,
+      "type": "piechart",
+      "title": "Regime Profitability",
+      "description": "Win/Loss split per regime detected at entry.",
+      "gridPos": { "h": 7, "w": 6, "x": 18, "y": 26 },
+      "datasource": { "type": "doitintl-bigquery-datasource", "uid": "BigQuery" },
+      "options": { "pieType": "pie", "displayLabels": ["name", "percent"] },
+      "targets": [
+        {
+          "rawQuery": true,
+          "rawSql": "SELECT CONCAT(regime, ' - ', IF(close_profit_pct >= 0, 'WIN', 'LOSS')) AS regime_result, COUNT(*) AS count FROM `${GCP_PROJECT_ID}.alpacatrader.trade_narratives` WHERE close_date IS NOT NULL GROUP BY regime_result ORDER BY count DESC",
+          "format": "table"
+        }
+      ]
+    }
+
+  ],
+
+  "refresh": "5m",
+  "schemaVersion": 38,
+  "tags": ["alpacatrader", "xai", "explainability", "youtube"],
+  "templating": {
+    "list": [
+      {
+        "datasource": { "type": "doitintl-bigquery-datasource", "uid": "BigQuery" },
+        "definition": "SELECT trade_key FROM `${GCP_PROJECT_ID}.alpacatrader.trade_narratives` WHERE close_date IS NOT NULL ORDER BY close_date DESC LIMIT 200",
+        "hide": 0,
+        "includeAll": false,
+        "label": "Select Trade",
+        "multi": false,
+        "name": "trade_key",
+        "query": {
+          "rawQuery": true,
+          "rawSql": "SELECT trade_key FROM `${GCP_PROJECT_ID}.alpacatrader.trade_narratives` WHERE close_date IS NOT NULL ORDER BY close_date DESC LIMIT 200"
+        },
+        "refresh": 2,
+        "sort": 3,
+        "type": "query"
+      },
+      {
+        "datasource": { "type": "doitintl-bigquery-datasource", "uid": "BigQuery" },
+        "definition": "SELECT DISTINCT pair FROM `${GCP_PROJECT_ID}.alpacatrader.trade_narratives` ORDER BY pair",
+        "hide": 0,
+        "includeAll": true,
+        "label": "Pair Filter",
+        "multi": true,
+        "name": "pair",
+        "query": {
+          "rawQuery": true,
+          "rawSql": "SELECT DISTINCT pair FROM `${GCP_PROJECT_ID}.alpacatrader.trade_narratives` ORDER BY pair"
+        },
+        "refresh": 2,
+        "sort": 1,
+        "type": "query"
+      }
+    ]
+  },
+  "time": { "from": "now-30d", "to": "now" },
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "AlpacaTrader — XAI Explainability",
+  "uid": "alpacatrader-xai",
+  "version": 1
+}

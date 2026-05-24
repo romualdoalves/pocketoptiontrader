@@ -1,0 +1,47 @@
+# Secrets — never commit these
+.env
+config/claude_desktop_config.json
+
+# Logs (can be large)
+logs/
+
+# Model weights
+models/*.zip
+
+# Optuna database
+logs/optuna.db
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+
+# Node
+node_modules/
+dist/
+.next/
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# PyTorch model weights
+models/strategy3/*.pt
+
+# State files (runtime, regenerated)
+state/
+
+# Param backups (keep only in local config/)
+config/params_backup_*.json
+
+# IDE
+.vscode/
+.idea/
+
+# Sensível — credenciais e configs locais
+credenciais.txt
+.claude/
+Ollama_Prompt_Antigravity.txt

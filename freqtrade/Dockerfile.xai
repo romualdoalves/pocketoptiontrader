@@ -1,0 +1,30 @@
+# Extends the official Freqtrade image with XAI dependencies:
+#   matplotlib  — chart generation
+#   pillow      — PNG optimisation
+#   mplfinance  — candlestick helper (optional, used as fallback)
+#   google-cloud-bigquery — BQ push from explanation_engine
+#
+# Build:  docker build -f Dockerfile.xai -t freqtrade-xai:latest .
+# Or let docker compose build it automatically via docker-compose.windows-test.yml
+
+FROM freqtradeorg/freqtrade:stable
+
+USER root
+
+# Install system deps for matplotlib (headless)
+RUN apt-get update -qq && \
+    apt-get install -y --no-install-recommends \
+        libfreetype6-dev \
+        libpng-dev \
+        pkg-config \
+    && rm -rf /var/lib/apt/lists/*
+
+USER ftuser
+
+# Install Python packages (--no-deps skips conflicting re-installs)
+RUN pip install --no-cache-dir --quiet \
+        matplotlib==3.8.4 \
+        pillow==10.3.0 \
+        mplfinance==0.12.10b0 \
+        google-cloud-bigquery==3.25.0 \
+        db-dtypes==1.2.0

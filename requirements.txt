@@ -1,0 +1,24 @@
+# ─── Core ───────────────────────────────────────────────────────────────────
+anthropic>=0.40.0          # Claude API (meta-optimizer)
+alpaca-py>=0.20.0          # Official Alpaca Python SDK (live_agent.py)
+
+# ─── Data & Technical Analysis ───────────────────────────────────────────────
+pandas>=2.0.0
+numpy>=1.24.0
+# ta-lib requires a C library — install separately:
+#   Windows: pip install TA-Lib‑0.4.xx-cpxxx-win_amd64.whl (from https://github.com/cgohlke/talib-build/releases)
+#   macOS:   brew install ta-lib && pip install ta-lib
+#   Linux:   sudo apt-get install libta-lib-dev && pip install ta-lib
+
+# ─── Level 4A — Evolution Strategies ─────────────────────────────────────────
+# (no extra deps — uses only stdlib + numpy)
+
+# ─── Level 4B — Bayesian Optimization ───────────────────────────────────────
+optuna>=3.5.0              # Bayesian hyperparameter search
+# Optuna uses SQLite by default (built into Python). No extra DB needed.
+
+# ─── Level 4C — Deep RL (optional, heavy) ────────────────────────────────────
+# Install these only if pursuing the FinRL/PPO approach:
+# stable-baselines3>=2.2.0
+# finrl>=0.3.6
+# gymnasium>=0.29.0

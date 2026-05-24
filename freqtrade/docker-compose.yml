@@ -1,0 +1,119 @@
+version: "3.9"
+
+# =============================================================
+# AlpacaTrader — Freqtrade + Grafana Stack
+# Region: GCP europe-west8 (Milan)
+#
+# Usage:
+#   cp .env.example .env && nano .env   # fill credentials
+#   docker compose up -d                # start everything
+#   docker compose logs -f freqtrade    # watch live logs
+# =============================================================
+
+networks:
+  trading:
+    driver: bridge
+
+volumes:
+  freqtrade_data:
+  grafana_data:
+
+services:
+
+  # ──────────────────────────────────────────────────────────
+  # Freqtrade trading engine
+  # ──────────────────────────────────────────────────────────
+  freqtrade:
+    image: freqtradeorg/freqtrade:stable
+    container_name: freqtrade
+    restart: unless-stopped
+    networks:
+      - trading
+    ports:
+      - "8888:8888"          # REST API / Freqtrade UI
+    volumes:
+      - ./user_data:/freqtrade/user_data
+      - ./config.json:/freqtrade/config.json:ro
+      # GCP service-account key (mounted read-only from host)
+      - ${GOOGLE_APPLICATION_CREDENTIALS_HOST:-./secrets/gcp_service_account.json}:/secrets/gcp_service_account.json:ro
+    env_file:
+      - .env
+    environment:
+      - ALPACA_API_KEY=${ALPACA_API_KEY}
+      - ALPACA_API_SECRET=${ALPACA_API_SECRET}
+      - FREQTRADE_JWT_SECRET=${FREQTRADE_JWT_SECRET}
+      - FREQTRADE_API_PASSWORD=${FREQTRADE_API_PASSWORD}
+      - GOOGLE_APPLICATION_CREDENTIALS=/secrets/gcp_service_account.json
+      - GCP_PROJECT_ID=${GCP_PROJECT_ID}
+      - BQ_DATASET=${BQ_DATASET:-alpacatrader}
+    command: >
+      trade
+      --config /freqtrade/config.json
+      --strategy Strategy2LiquiditySentinel
+      --strategy-path /freqtrade/user_data/strategies
+      --db-url sqlite:////freqtrade/user_data/tradesv3.sqlite
+      --logfile /freqtrade/user_data/logs/freqtrade.log
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:8888/api/v1/ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+
+  # ──────────────────────────────────────────────────────────
+  # BigQuery sync — runs every 5 minutes via cron inside container
+  # ──────────────────────────────────────────────────────────
+  bq_sync:
+    image: python:3.11-slim
+    container_name: bq_sync
+    restart: unless-stopped
+    networks:
+      - trading
+    depends_on:
+      freqtrade:
+        condition: service_healthy
+    volumes:
+      - ./user_data:/freqtrade/user_data
+      - ./sync_to_bq.py:/app/sync_to_bq.py:ro
+      - ${GOOGLE_APPLICATION_CREDENTIALS_HOST:-./secrets/gcp_service_account.json}:/secrets/gcp_service_account.json:ro
+    env_file:
+      - .env
+    environment:
+      - GOOGLE_APPLICATION_CREDENTIALS=/secrets/gcp_service_account.json
+      - GCP_PROJECT_ID=${GCP_PROJECT_ID}
+      - BQ_DATASET=${BQ_DATASET:-alpacatrader}
+      - SQLITE_PATH=/freqtrade/user_data/tradesv3.sqlite
+    command: >
+      bash -c "
+        pip install --quiet google-cloud-bigquery pandas &&
+        while true; do
+          python /app/sync_to_bq.py;
+          sleep 300;
+        done
+      "
+
+  # ──────────────────────────────────────────────────────────
+  # Grafana dashboard
+  # ──────────────────────────────────────────────────────────
+  grafana:
+    image: grafana/grafana:10.4.2
+    container_name: grafana
+    restart: unless-stopped
+    networks:
+      - trading
+    ports:
+      - "3000:3000"          # Grafana UI
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+    environment:
+      - GF_SECURITY_ADMIN_USER=${GRAFANA_ADMIN_USER:-admin}
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:-admin}
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_SERVER_ROOT_URL=http://localhost:3000
+      - GF_INSTALL_PLUGINS=doitintl-bigquery-datasource,yesoreyeram-infinity-datasource
+      - GCP_PROJECT_ID=${GCP_PROJECT_ID}
+      - GOOGLE_APPLICATION_CREDENTIALS=/secrets/gcp_service_account.json
+    depends_on:
+      - freqtrade

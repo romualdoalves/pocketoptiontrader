@@ -1,0 +1,112 @@
+[
+  {
+    "trailing_stop_pct": 3.0,
+    "ladder_drop_1": 2.0,
+    "ladder_drop_2": 4.0,
+    "ladder_drop_3": 6.0,
+    "position_size_pct": 5.0,
+    "wheel_target_delta": 0.30,
+    "wheel_dte": 30,
+    "min_iv_threshold": 40.0,
+    "copy_trade_min_usd": 15000
+  },
+  {
+    "trailing_stop_pct": 2.5,
+    "ladder_drop_1": 1.5,
+    "ladder_drop_2": 3.5,
+    "ladder_drop_3": 5.5,
+    "position_size_pct": 4.0,
+    "wheel_target_delta": 0.25,
+    "wheel_dte": 30,
+    "min_iv_threshold": 35.0,
+    "copy_trade_min_usd": 10000
+  },
+  {
+    "trailing_stop_pct": 3.5,
+    "ladder_drop_1": 2.5,
+    "ladder_drop_2": 4.5,
+    "ladder_drop_3": 6.5,
+    "position_size_pct": 5.0,
+    "wheel_target_delta": 0.30,
+    "wheel_dte": 35,
+    "min_iv_threshold": 45.0,
+    "copy_trade_min_usd": 20000
+  },
+  {
+    "trailing_stop_pct": 4.0,
+    "ladder_drop_1": 2.0,
+    "ladder_drop_2": 4.0,
+    "ladder_drop_3": 7.0,
+    "position_size_pct": 6.0,
+    "wheel_target_delta": 0.35,
+    "wheel_dte": 25,
+    "min_iv_threshold": 40.0,
+    "copy_trade_min_usd": 15000
+  },
+  {
+    "trailing_stop_pct": 2.0,
+    "ladder_drop_1": 1.0,
+    "ladder_drop_2": 3.0,
+    "ladder_drop_3": 5.0,
+    "position_size_pct": 3.0,
+    "wheel_target_delta": 0.20,
+    "wheel_dte": 30,
+    "min_iv_threshold": 50.0,
+    "copy_trade_min_usd": 25000
+  },
+  {
+    "trailing_stop_pct": 3.0,
+    "ladder_drop_1": 2.0,
+    "ladder_drop_2": 5.0,
+    "ladder_drop_3": 8.0,
+    "position_size_pct": 5.0,
+    "wheel_target_delta": 0.30,
+    "wheel_dte": 30,
+    "min_iv_threshold": 38.0,
+    "copy_trade_min_usd": 12000
+  },
+  {
+    "trailing_stop_pct": 3.2,
+    "ladder_drop_1": 2.2,
+    "ladder_drop_2": 4.2,
+    "ladder_drop_3": 6.2,
+    "position_size_pct": 4.5,
+    "wheel_target_delta": 0.28,
+    "wheel_dte": 28,
+    "min_iv_threshold": 42.0,
+    "copy_trade_min_usd": 15000
+  },
+  {
+    "trailing_stop_pct": 2.8,
+    "ladder_drop_1": 1.8,
+    "ladder_drop_2": 3.8,
+    "ladder_drop_3": 5.8,
+    "position_size_pct": 5.5,
+    "wheel_target_delta": 0.32,
+    "wheel_dte": 32,
+    "min_iv_threshold": 38.0,
+    "copy_trade_min_usd": 15000
+  },
+  {
+    "trailing_stop_pct": 3.8,
+    "ladder_drop_1": 2.8,
+    "ladder_drop_2": 5.0,
+    "ladder_drop_3": 7.0,
+    "position_size_pct": 4.0,
+    "wheel_target_delta": 0.25,
+    "wheel_dte": 30,
+    "min_iv_threshold": 45.0,
+    "copy_trade_min_usd": 18000
+  },
+  {
+    "trailing_stop_pct": 1.5,
+    "ladder_drop_1": 1.5,
+    "ladder_drop_2": 3.0,
+    "ladder_drop_3": 5.5,
+    "position_size_pct": 3.5,
+    "wheel_target_delta": 0.30,
+    "wheel_dte": 30,
+    "min_iv_threshold": 40.0,
+    "copy_trade_min_usd": 15000
+  }
+]

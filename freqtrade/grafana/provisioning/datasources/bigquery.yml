@@ -1,0 +1,30 @@
+apiVersion: 1
+
+datasources:
+  - name: BigQuery
+    type: doitintl-bigquery-datasource
+    access: proxy
+    isDefault: true
+    jsonData:
+      # GCP project configured via environment variable in docker-compose
+      defaultProject: "${GCP_PROJECT_ID}"
+      authenticationType: jwt
+      # The service-account JSON is mounted into the Grafana container
+      # and read by the BigQuery plugin at startup.
+      tokenUri: "https://oauth2.googleapis.com/token"
+    secureJsonData:
+      # Grafana BigQuery plugin reads GOOGLE_APPLICATION_CREDENTIALS
+      # automatically — no manual key paste needed.
+    editable: false
+
+  # ── Optional: Freqtrade REST datasource (JSON API) ──────────
+  - name: FreqtradeAPI
+    type: yesoreyeram-infinity-datasource
+    access: proxy
+    jsonData:
+      base_url: "http://freqtrade:8888/api/v1"
+      auth_method: "basicAuth"
+      basicAuthUser: "freqtrade"
+    secureJsonData:
+      basicAuthPassword: "${FREQTRADE_API_PASSWORD}"
+    editable: false

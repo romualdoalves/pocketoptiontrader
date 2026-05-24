@@ -1,0 +1,120 @@
+{
+  "_comment": "Strategy 3 — AI-Optimized Defensive Allocator. Edit carefully.",
+
+  "universe": {
+    "core_assets": [
+      "BTC/USD",
+      "ETH/USD",
+      "SOL/USD",
+      "LTC/USD",
+      "AVAX/USD",
+      "BCH/USD",
+      "LINK/USD",
+      "UNI/USD",
+      "AAVE/USD"
+    ],
+    "hedge_asset": "PAXG/USD",
+    "min_avg_daily_volume_usd": 5000000,
+    "liquidity_lookback_bars": 288,
+    "bar_timeframe": "5Min",
+    "history_bars_for_indicators": 300
+  },
+
+  "regime_detection": {
+    "breadth_lookback_bars": 288,
+    "bear_breadth_threshold": 0.50,
+    "bull_breadth_threshold": 0.65,
+    "trend_ema_period": 200,
+    "hedge_weight_bull": 0.10,
+    "hedge_weight_neutral": 0.20,
+    "hedge_weight_bear": 0.40
+  },
+
+  "lstm": {
+    "enabled": true,
+    "model_path": "models/strategy3/lstm_alpha.pt",
+    "normalizer_path": "models/strategy3/lstm_normalizer.json",
+    "sequence_length": 60,
+    "features": [
+      "log_return",
+      "volume_ratio",
+      "ema_ratio",
+      "rsi",
+      "macd_hist",
+      "vwap_ratio",
+      "atr_ratio",
+      "hour_sin",
+      "hour_cos",
+      "dow_sin"
+    ],
+    "hidden_size": 64,
+    "num_layers": 2,
+    "dropout": 0.2,
+    "long_threshold": 0.0015,
+    "short_threshold": -0.0015,
+    "_threshold_help": "Predicted next-bar log return magnitude to trigger a signal (0.0015 = 0.15%)"
+  },
+
+  "training": {
+    "train_bars": 20000,
+    "val_split": 0.15,
+    "batch_size": 64,
+    "epochs": 30,
+    "learning_rate": 0.001,
+    "weight_decay": 1e-05,
+    "early_stop_patience": 5,
+    "target_horizon_bars": 3,
+    "_target_help": "Predict log return N bars ahead to dampen noise"
+  },
+
+  "macro_filter": {
+    "funding_rate_threshold": 0.0001,
+    "oi_pct_threshold": 0.1,
+    "binance_symbol": "BTCUSDT"
+  },
+
+  "allocator": {
+    "method": "hybrid",
+    "invvol_weight": 0.5,
+    "sharpe_weight": 0.5,
+    "vol_lookback_bars": 288,
+    "sharpe_lookback_bars": 288,
+    "min_weight_per_asset": 0.02,
+    "max_weight_per_asset": 0.40,
+    "rebalance_threshold_pct": 5.0,
+    "_rebalance_help": "Only rebalance if target weight deviates from current by > threshold %"
+  },
+
+  "risk_manager": {
+    "drawdown_tiers": [
+      { "dd_pct": 0.0, "exposure": 1.00 },
+      { "dd_pct": 2.0, "exposure": 0.80 },
+      { "dd_pct": 4.0, "exposure": 0.40 },
+      { "dd_pct": 6.0, "exposure": 0.00 }
+    ],
+    "cooling_period_hours": 24,
+    "recovery_threshold_pct": 50.0,
+    "_recovery_help": "After cooling, need to recover 50% of drawdown before re-entering",
+    "max_portfolio_leverage": 1.0,
+    "peak_decay_days": 90,
+    "_peak_decay_help": "Reset equity peak after N days to allow catch-up after long drawdowns"
+  },
+
+  "execution": {
+    "rate_limit_per_minute": 180,
+    "rate_limit_burst_per_second": 8,
+    "max_retries": 5,
+    "base_backoff_seconds": 1.0,
+    "max_backoff_seconds": 30.0,
+    "cancel_poll_timeout_seconds": 5.0,
+    "cancel_poll_interval_seconds": 0.25,
+    "slippage_buffer_pct": 0.001,
+    "dry_run_default": true
+  },
+
+  "scheduler": {
+    "interval_minutes": 5,
+    "market_hours_only": false,
+    "_market_hours_help": "Strategy 3 runs 24/7 for crypto (unlike Strategy 2 which gates on US market hours)"
+  }
+}

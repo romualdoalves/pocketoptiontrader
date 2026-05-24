@@ -1,0 +1,353 @@
+{
+  "__inputs": [],
+  "__requires": [
+    { "type": "grafana", "id": "grafana", "name": "Grafana", "version": "10.0.0" },
+    { "type": "datasource", "id": "doitintl-bigquery-datasource", "name": "BigQuery", "version": "1.0.0" }
+  ],
+  "annotations": { "list": [] },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "liveNow": false,
+  "panels": [
+
+    {
+      "id": 1,
+      "type": "stat",
+      "title": "Total Closed Trades",
+      "gridPos": { "h": 4, "w": 4, "x": 0, "y": 0 },
+      "datasource": { "type": "doitintl-bigquery-datasource", "uid": "BigQuery" },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "rawQuery": true,
+          "rawSql": "SELECT COUNT(*) AS value FROM `${GCP_PROJECT_ID}.alpacatrader.trades` WHERE is_open = FALSE",
+          "format": "table"
+        }
+      ]
+    },
+
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "Win Rate",
+      "gridPos": { "h": 4, "w": 4, "x": 4, "y": 0 },
+      "datasource": { "type": "doitintl-bigquery-datasource", "uid": "BigQuery" },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "colorMode": "background",
+        "graphMode": "none",
+        "unit": "percentunit",
+        "thresholds": {
+          "steps": [
+            { "color": "red",    "value": 0    },
+            { "color": "yellow", "value": 0.45 },
+            { "color": "green",  "value": 0.55 }
+          ]
+        }
+      },
+      "targets": [
+        {
+          "rawQuery": true,
+          "rawSql": "SELECT ROUND(COUNTIF(close_profit > 0) / COUNT(*), 4) AS value FROM `${GCP_PROJECT_ID}.alpacatrader.trades` WHERE is_open = FALSE",
+          "format": "table"
+        }
+      ]
+    },
+
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "Total P&L (USD)",
+      "gridPos": { "h": 4, "w": 4, "x": 8, "y": 0 },
+      "datasource": { "type": "doitintl-bigquery-datasource", "uid": "BigQuery" },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "colorMode": "background",
+        "graphMode": "none",
+        "unit": "currencyUSD",
+        "thresholds": {
+          "steps": [
+            { "color": "red",   "value": null },
+            { "color": "green", "value": 0    }
+          ]
+        }
+      },
+      "targets": [
+        {
+          "rawQuery": true,
+          "rawSql": "SELECT ROUND(SUM(close_profit_abs), 2) AS value FROM `${GCP_PROJECT_ID}.alpacatrader.trades` WHERE is_open = FALSE",
+          "format": "table"
+        }
+      ]
+    },
+
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "Avg Profit per Trade (%)",
+      "gridPos": { "h": 4, "w": 4, "x": 12, "y": 0 },
+      "datasource": { "type": "doitintl-bigquery-datasource", "uid": "BigQuery" },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "colorMode": "background",
+        "graphMode": "none",
+        "unit": "percent",
+        "thresholds": {
+          "steps": [
+            { "color": "red",   "value": null },
+            { "color": "green", "value": 0    }
+          ]
+        }
+      },
+      "targets": [
+        {
+          "rawQuery": true,
+          "rawSql": "SELECT ROUND(AVG(close_profit) * 100, 3) AS value FROM `${GCP_PROJECT_ID}.alpacatrader.trades` WHERE is_open = FALSE",
+          "format": "table"
+        }
+      ]
+    },
+
+    {
+      "id": 5,
+      "type": "stat",
+      "title": "Open Positions",
+      "gridPos": { "h": 4, "w": 4, "x": 16, "y": 0 },
+      "datasource": { "type": "doitintl-bigquery-datasource", "uid": "BigQuery" },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "colorMode": "value",
+        "graphMode": "none"
+      },
+      "targets": [
+        {
+          "rawQuery": true,
+          "rawSql": "SELECT COUNT(*) AS value FROM `${GCP_PROJECT_ID}.alpacatrader.trades` WHERE is_open = TRUE",
+          "format": "table"
+        }
+      ]
+    },
+
+    {
+      "id": 6,
+      "type": "stat",
+      "title": "Max Drawdown (%)",
+      "gridPos": { "h": 4, "w": 4, "x": 20, "y": 0 },
+      "datasource": { "type": "doitintl-bigquery-datasource", "uid": "BigQuery" },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "colorMode": "background",
+        "graphMode": "none",
+        "unit": "percent",
+        "thresholds": {
+          "steps": [
+            { "color": "green",  "value": null  },
+            { "color": "yellow", "value": -5    },
+            { "color": "red",    "value": -10   }
+          ]
+        }
+      },
+      "targets": [
+        {
+          "rawQuery": true,
+          "rawSql": "SELECT ROUND(MIN(close_profit) * 100, 2) AS value FROM `${GCP_PROJECT_ID}.alpacatrader.trades` WHERE is_open = FALSE",
+          "format": "table"
+        }
+      ]
+    },
+
+    {
+      "id": 10,
+      "type": "timeseries",
+      "title": "Cumulative P&L (USD)",
+      "gridPos": { "h": 9, "w": 16, "x": 0, "y": 4 },
+      "datasource": { "type": "doitintl-bigquery-datasource", "uid": "BigQuery" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyUSD",
+          "custom": { "lineWidth": 2, "fillOpacity": 15 },
+          "color": { "mode": "fixed", "fixedColor": "green" },
+          "thresholds": {
+            "steps": [
+              { "color": "red",   "value": null },
+              { "color": "green", "value": 0    }
+            ]
+          }
+        }
+      },
+      "options": { "tooltip": { "mode": "single" } },
+      "targets": [
+        {
+          "rawQuery": true,
+          "rawSql": "SELECT close_date AS time, SUM(close_profit_abs) OVER (ORDER BY close_date) AS cumulative_pnl FROM `${GCP_PROJECT_ID}.alpacatrader.trades` WHERE is_open = FALSE ORDER BY close_date",
+          "format": "time_series"
+        }
+      ]
+    },
+
+    {
+      "id": 11,
+      "type": "barchart",
+      "title": "Daily P&L (USD)",
+      "gridPos": { "h": 9, "w": 8, "x": 16, "y": 4 },
+      "datasource": { "type": "doitintl-bigquery-datasource", "uid": "BigQuery" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyUSD",
+          "thresholds": {
+            "steps": [
+              { "color": "red",   "value": null },
+              { "color": "green", "value": 0    }
+            ]
+          },
+          "custom": { "fillOpacity": 80 }
+        }
+      },
+      "targets": [
+        {
+          "rawQuery": true,
+          "rawSql": "SELECT date AS time, ROUND(total_profit_usd, 2) AS daily_pnl FROM `${GCP_PROJECT_ID}.alpacatrader.daily_summary` ORDER BY date DESC LIMIT 30",
+          "format": "time_series"
+        }
+      ]
+    },
+
+    {
+      "id": 20,
+      "type": "table",
+      "title": "Recent Closed Trades",
+      "gridPos": { "h": 10, "w": 24, "x": 0, "y": 13 },
+      "datasource": { "type": "doitintl-bigquery-datasource", "uid": "BigQuery" },
+      "options": {
+        "sortBy": [{ "displayName": "close_date", "desc": true }]
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "close_profit" },
+            "properties": [
+              { "id": "unit",   "value": "percentunit" },
+              { "id": "custom.displayMode", "value": "color-background" },
+              { "id": "thresholds", "value": {
+                  "steps": [
+                    { "color": "red",   "value": null },
+                    { "color": "green", "value": 0    }
+                  ]
+              }}
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "close_profit_abs" },
+            "properties": [
+              { "id": "unit", "value": "currencyUSD" }
+            ]
+          }
+        ]
+      },
+      "targets": [
+        {
+          "rawQuery": true,
+          "rawSql": "SELECT trade_id, pair, open_date, close_date, open_rate, close_rate, ROUND(close_profit, 5) AS close_profit, ROUND(close_profit_abs, 2) AS close_profit_abs, sell_reason, strategy FROM `${GCP_PROJECT_ID}.alpacatrader.trades` WHERE is_open = FALSE ORDER BY close_date DESC LIMIT 50",
+          "format": "table"
+        }
+      ]
+    },
+
+    {
+      "id": 30,
+      "type": "timeseries",
+      "title": "Trade Profit Distribution Over Time (%)",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 23 },
+      "datasource": { "type": "doitintl-bigquery-datasource", "uid": "BigQuery" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "custom": { "drawStyle": "points", "pointSize": 6 },
+          "color": { "mode": "thresholds" },
+          "thresholds": {
+            "steps": [
+              { "color": "red",   "value": null },
+              { "color": "green", "value": 0    }
+            ]
+          }
+        }
+      },
+      "targets": [
+        {
+          "rawQuery": true,
+          "rawSql": "SELECT close_date AS time, close_profit AS profit_pct FROM `${GCP_PROJECT_ID}.alpacatrader.trades` WHERE is_open = FALSE ORDER BY close_date",
+          "format": "time_series"
+        }
+      ]
+    },
+
+    {
+      "id": 31,
+      "type": "piechart",
+      "title": "Exit Reason Breakdown",
+      "gridPos": { "h": 8, "w": 6, "x": 12, "y": 23 },
+      "datasource": { "type": "doitintl-bigquery-datasource", "uid": "BigQuery" },
+      "options": { "pieType": "donut", "displayLabels": ["name", "percent"] },
+      "targets": [
+        {
+          "rawQuery": true,
+          "rawSql": "SELECT sell_reason, COUNT(*) AS count FROM `${GCP_PROJECT_ID}.alpacatrader.trades` WHERE is_open = FALSE GROUP BY sell_reason ORDER BY count DESC",
+          "format": "table"
+        }
+      ]
+    },
+
+    {
+      "id": 32,
+      "type": "bargauge",
+      "title": "Win Rate by Month",
+      "gridPos": { "h": 8, "w": 6, "x": 18, "y": 23 },
+      "datasource": { "type": "doitintl-bigquery-datasource", "uid": "BigQuery" },
+      "options": {
+        "orientation": "horizontal",
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "displayMode": "gradient"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "thresholds": {
+            "steps": [
+              { "color": "red",    "value": 0    },
+              { "color": "yellow", "value": 0.45 },
+              { "color": "green",  "value": 0.55 }
+            ]
+          }
+        }
+      },
+      "targets": [
+        {
+          "rawQuery": true,
+          "rawSql": "SELECT FORMAT_DATE('%Y-%m', close_date) AS month, ROUND(COUNTIF(close_profit > 0) / COUNT(*), 4) AS win_rate FROM `${GCP_PROJECT_ID}.alpacatrader.trades` WHERE is_open = FALSE GROUP BY month ORDER BY month",
+          "format": "table"
+        }
+      ]
+    }
+
+  ],
+
+  "refresh": "5m",
+  "schemaVersion": 38,
+  "tags": ["alpacatrader", "btc", "freqtrade"],
+  "templating": { "list": [] },
+  "time": { "from": "now-30d", "to": "now" },
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "AlpacaTrader — Trading Overview",
+  "uid": "alpacatrader-overview",
+  "version": 1
+}
