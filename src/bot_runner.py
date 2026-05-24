@@ -108,17 +108,27 @@ def build_sniper_config(db_cfg: Configuracao) -> RangeSniperConfig:
     )
 
 
+def _safe(fn, *args, default=None):
+    try:
+        return fn(*args)
+    except Exception:
+        return default
+
+
 def main() -> None:
     logger.info("=== PocketOptionTrader — Bot Runner iniciando ===")
 
-    # Inicializa banco de dados
     init_db()
     logger.info("Banco de dados pronto")
 
-    # Conecta à PocketOption
-    connector = PocketOptionConnector()
-    connector.connect()
+    # Escreve linha inicial para a UI mostrar algo imediatamente
+    upsert_bot_status(
+        saldo=None, saldo_inicial=None, payout_atual=None,
+        ultimo_preco=None, status_conexao="conectando",
+        ciclos_sessao=0, pnl_sessao=0.0,
+    )
 
+    connector = PocketOptionConnector()
     feed = DataFeed(connector)
     trade_manager = TradeManager(connector)
     sniper: RangeSniper | None = None
@@ -128,22 +138,33 @@ def main() -> None:
 
     while True:
         try:
+            # Garante conexão ativa
+            if not connector.is_connected():
+                logger.info("Conectando à PocketOption...")
+                connector.connect()
+                logger.info("Conectado")
+
             # Lê configuração e status
             with get_session() as session:
                 db_cfg = load_config(session)
                 status = db_cfg.status_bot
                 cfg_id = db_cfg.id
 
+            # Coleta métricas ao vivo com fallback
+            saldo_atual  = _safe(connector.get_balance)
+            is_conn      = connector.is_connected()
+            conn_str     = "conectado" if is_conn else "desconectado"
+
             if status != "ativo":
                 if sniper and sniper.is_running:
                     sniper.stop()
                     logger.info("Bot parado via UI")
                 upsert_bot_status(
-                    saldo=connector.get_balance(),
+                    saldo=saldo_atual,
                     saldo_inicial=saldo_inicial,
-                    payout_atual=None,
-                    ultimo_preco=None,
-                    status_conexao="conectado" if connector.is_connected() else "desconectado",
+                    payout_atual=_safe(feed.get_payout, db_cfg.ativo),
+                    ultimo_preco=_safe(feed.get_current_price, db_cfg.ativo),
+                    status_conexao=conn_str,
                     ciclos_sessao=0,
                     pnl_sessao=0.0,
                 )
@@ -155,11 +176,10 @@ def main() -> None:
                 if sniper and sniper.is_running:
                     sniper.stop()
                     time.sleep(2)
-
                 sniper_cfg = build_sniper_config(db_cfg)
                 sniper = RangeSniper(trade_manager, feed, sniper_cfg)
                 last_config_id = cfg_id
-                saldo_inicial = connector.get_balance()
+                saldo_inicial = saldo_atual
                 logger.info("Sniper configurado: %s", sniper_cfg)
 
             if not sniper.is_running:
@@ -168,7 +188,7 @@ def main() -> None:
             # Persiste novos ciclos completados
             completed = [c for c in sniper.get_cycles() if c.status != "pending"]
             if completed:
-                for cycle in completed[-5:]:  # últimos 5 a cada poll
+                for cycle in completed[-5:]:
                     persist_cycle(cycle)
 
             # Atualiza BotStatus periodicamente
@@ -176,18 +196,12 @@ def main() -> None:
             if now - last_status_write >= STATUS_WRITE_INTERVAL:
                 cycles_all = sniper.get_cycles() if sniper else []
                 pnl = sum(c.resultado_financeiro or 0 for c in cycles_all)
-                try:
-                    saldo_atual = connector.get_balance()
-                    payout_atual = feed.get_payout(db_cfg.ativo)
-                    ultimo_preco = feed.get_current_price(db_cfg.ativo)
-                except Exception:
-                    saldo_atual = payout_atual = ultimo_preco = None
                 upsert_bot_status(
                     saldo=saldo_atual,
                     saldo_inicial=saldo_inicial,
-                    payout_atual=payout_atual,
-                    ultimo_preco=ultimo_preco,
-                    status_conexao="conectado" if connector.is_connected() else "desconectado",
+                    payout_atual=_safe(feed.get_payout, db_cfg.ativo),
+                    ultimo_preco=_safe(feed.get_current_price, db_cfg.ativo),
+                    status_conexao=conn_str,
                     ciclos_sessao=len(cycles_all),
                     pnl_sessao=round(pnl, 4),
                 )
@@ -203,7 +217,12 @@ def main() -> None:
 
         except Exception as exc:
             logger.error("Erro no loop principal: %s", exc, exc_info=True)
-            # Edge case D: reconectar WebSocket
+            upsert_bot_status(
+                saldo=None, saldo_inicial=saldo_inicial,
+                payout_atual=None, ultimo_preco=None,
+                status_conexao="desconectado",
+                ciclos_sessao=0, pnl_sessao=0.0,
+            )
             try:
                 connector.reconnect()
             except Exception as reconn_exc:
