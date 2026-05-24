@@ -290,8 +290,11 @@ class PocketOptionConnector:
                 # O "sessionToken" é vinculado ao IP do browser — não funciona de VPS.
                 logger.info("Socket.IO conectado — enviando auth")
                 uid_val = int(self._uid) if self._uid.isdigit() else self._uid
+                # "session" = POCKET_SECRET (b0f01b9e...) — mesmo token que o
+                # browser envia como "sessionToken". O ci_session cookie vai
+                # apenas no header HTTP do upgrade, não no payload de auth.
                 auth = json.dumps(["auth", {
-                    "session":  self._ssid,
+                    "session":  self._secret,
                     "isDemo":   _DEMO_VALUE[self._demo],
                     "uid":      uid_val,
                     "platform": 1,
