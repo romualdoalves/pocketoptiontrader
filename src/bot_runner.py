@@ -139,7 +139,7 @@ def main() -> None:
     while True:
         try:
             # Garante conexão ativa
-            if not connector.is_connected():
+            if not connector.is_connected:
                 logger.info("Conectando à PocketOption...")
                 connector.connect()
                 logger.info("Conectado")
@@ -152,7 +152,7 @@ def main() -> None:
 
             # Coleta métricas ao vivo com fallback
             saldo_atual  = _safe(connector.get_balance)
-            is_conn      = connector.is_connected()
+            is_conn      = connector.is_connected
             conn_str     = "conectado" if is_conn else "desconectado"
 
             if status != "ativo":
