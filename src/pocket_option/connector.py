@@ -99,12 +99,15 @@ class PocketOptionConnector:
     # ── Ciclo de vida ─────────────────────────────────────────────────────────
 
     def connect(self) -> None:
-        headers = _BROWSER_HEADERS + [f"Cookie: ci_session={self._ssid}"]
+        # Sem cookie ci_session: ele contém ip_address do browser (IP residencial)
+        # e faz o servidor rejeitar conexões vindas de IPs diferentes (VPS).
+        # sessionToken é validado sem binding de IP.
+        headers = _BROWSER_HEADERS
         urls = _WS_URLS_DEMO if self._demo else _WS_URLS_REAL
 
         logger.info(
-            "Auth debug — ssid_len=%d uid=%r secret_len=%d demo=%s",
-            len(self._ssid), self._uid, len(self._secret), self._demo,
+            "Auth debug — uid=%r secret_len=%d demo=%s",
+            self._uid, len(self._secret), self._demo,
         )
 
         for url in urls:
