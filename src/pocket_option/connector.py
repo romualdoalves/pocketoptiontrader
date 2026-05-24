@@ -276,7 +276,7 @@ class PocketOptionConnector:
         t.start()
 
     def _on_message(self, ws, message: str) -> None:
-        logger.debug("[WS raw] %s", message[:300])
+        logger.info("[WS raw] %s", message[:300])
 
         try:
             if message.startswith("0"):
@@ -302,7 +302,8 @@ class PocketOptionConnector:
                     "lang":         "en",
                     "currentUrl":   url_path,
                     "isChart":      1,
-                }])
+                }], separators=(',', ':'))
+                logger.info("[WS send] 42%s", auth)
                 ws.send(f"42{auth}")
 
             elif message.startswith("42"):
