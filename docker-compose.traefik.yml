@@ -32,8 +32,12 @@ services:
       - "traefik.http.routers.potrader.entrypoints=websecure"
       - "traefik.http.routers.potrader.tls.certresolver=myresolver"
 
-      # Service
+      # Service — porta do Streamlit
       - "traefik.http.services.potrader.loadbalancer.server.port=8501"
+
+      # Força o Traefik a usar a rede traefik-public para chegar ao container
+      # (sem isso, container em 2 redes pode causar 504)
+      - "traefik.docker.network=traefik-public"
 
       # Middleware de redirecionamento HTTPS
       - "traefik.http.middlewares.https-redirect.redirectscheme.scheme=https"
