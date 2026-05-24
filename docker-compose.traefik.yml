@@ -11,7 +11,7 @@
 #   docker compose -f docker-compose.yml -f docker-compose.traefik.yml up -d --build
 #
 # Pré-requisitos no VPS:
-#   - Traefik rodando com network "traefik_net" e certresolver "letsencrypt"
+#   - Traefik rodando com network "traefik-public" e certresolver "letsencrypt"
 #   - DNS de pocketoption.tradixio.com apontando para o IP do VPS
 #   - Arquivo .env preenchido com credenciais PocketOption
 
@@ -40,7 +40,7 @@ services:
       - "traefik.http.middlewares.https-redirect.redirectscheme.permanent=true"
     networks:
       - default
-      - traefik_net
+      - traefik-public
 
   postgres:
     # Postgres não expõe porta externamente em produção
@@ -52,5 +52,5 @@ services:
       - default
 
 networks:
-  traefik_net:
+  traefik-public:
     external: true   # Rede do Traefik já existente no VPS
