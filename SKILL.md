@@ -316,15 +316,38 @@ Break-even (payout 85%): win_rate > 54.05%
 ```bash
 git clone https://github.com/romualdoalves/pocketoptiontrader.git /opt/pocketoption
 cd /opt/pocketoption
-cp .env.example .env && nano .env   # preencher credenciais PocketOption
+cp .env.example .env && nano .env   # preencher POCKET_UID (uid numérico)
+
+# Capturar credenciais com IP do VPS (OBRIGATÓRIO — session é IP-bound)
+apt-get install -y xvfb python3-pip
+pip install playwright && playwright install chromium
+xvfb-run -a python scripts/capture_session.py
+# -> abre browser virtual, faça login com Google Account
+# -> script salva POCKET_SECRET + POCKET_SSID no .env automaticamente
+
 docker compose -f docker-compose.yml -f docker-compose.traefik.yml up -d --build
 ```
 
-### Atualização
+### Renovar sessão (token expira periodicamente)
+```bash
+cd /opt/pocketoption
+# Parar bot, rodar capture, reiniciar
+docker compose stop bot
+xvfb-run -a python scripts/capture_session.py
+docker compose up -d --force-recreate bot
+```
+
+### Atualização de código
 ```bash
 cd /opt/pocketoption && git pull
 docker compose -f docker-compose.yml -f docker-compose.traefik.yml up -d --build
 ```
+
+### Por que IP-binding?
+O PocketOption vincula o `session` token ao IP que criou a sessão.
+O `scripts/capture_session.py` usa Playwright (browser real via Xvfb) para abrir
+o PocketOption **do VPS**, gerando um token vinculado ao IP do VPS.
+Sem isso, qualquer token criado em outra máquina é rejeitado com Socket.IO `41`.
 
 ### Logs em tempo real
 ```bash

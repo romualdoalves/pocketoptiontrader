@@ -99,15 +99,17 @@ class PocketOptionConnector:
     # ── Ciclo de vida ─────────────────────────────────────────────────────────
 
     def connect(self) -> None:
-        # Sem cookie ci_session: ele contém ip_address do browser (IP residencial)
-        # e faz o servidor rejeitar conexões vindas de IPs diferentes (VPS).
-        # sessionToken é validado sem binding de IP.
-        headers = _BROWSER_HEADERS
+        # Inclui ci_session cookie se disponível (deve ser de sessão criada no mesmo IP
+        # da máquina que roda o bot — use scripts/capture_session.py no VPS).
+        if self._ssid:
+            headers = _BROWSER_HEADERS + [f"Cookie: ci_session={self._ssid}"]
+        else:
+            headers = _BROWSER_HEADERS
         urls = _WS_URLS_DEMO if self._demo else _WS_URLS_REAL
 
         logger.info(
-            "Auth debug — uid=%r secret_len=%d demo=%s",
-            self._uid, len(self._secret), self._demo,
+            "Auth debug — uid=%r secret_len=%d demo=%s ssid_set=%s",
+            self._uid, len(self._secret), self._demo, bool(self._ssid),
         )
 
         for url in urls:
