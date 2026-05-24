@@ -31,7 +31,7 @@ description: |
 
 # PocketOptionTrader — Documentação do Projeto
 
-**Última atualização:** 2026-05-24  
+**Última atualização:** 2026-05-24 (v2 — auth format fix)  
 **Conta:** PocketOption Demo (UID: 2197423) — conta real disponível  
 **Localização:** Brasil → deploy: VPS Hostinger KVM4 (pocketoption.tradixio.com)  
 **Repositório:** https://github.com/romualdoalves/pocketoptiontrader.git
@@ -64,18 +64,31 @@ feita via Google Account e as credenciais são cookies de sessão extraídos do 
 Armazenadas exclusivamente no `.env` (nunca commitar):
 
 ```bash
-POCKET_SSID=<cookie ci_session — identificador da sessão>
-POCKET_UID=<ID do usuário>
-POCKET_SECRET=<chave de autenticação>
+POCKET_SSID=<cookie ci_session — usado como header HTTP no upgrade WS>
+POCKET_UID=<ID numérico do usuário, ex: 2197423>
+POCKET_SECRET=<session token — valor do campo "session" no auth WS>
 POCKET_DEMO=1   # 1=conta demo, 0=conta real
 ```
 
-Autenticação via WebSocket usando `pocketoptionapi`:
-```python
-from pocketoptionapi.stable_api import PocketOption
-api = PocketOption(ssid=POCKET_SSID, demo=bool(int(POCKET_DEMO)))
-await api.connect()
+**Como extrair:** DevTools → Network → WS → filtrar por `api` → procurar mensagem com
+`42["auth"` → copiar o valor do campo `"session"` para `POCKET_SECRET`.
+
+**Formato correto do auth WebSocket** (baseado em ChipaDevTeam/PocketOptionAPI e pocket-option PyPI):
+```json
+42["auth",{"session":"<POCKET_SECRET>","isDemo":1,"uid":2197423,"platform":2}]
 ```
+
+A implementação usa `websocket-client` com handshake Engine.IO/Socket.IO manual
+(`src/pocket_option/connector.py`). **NÃO usa** `pocketoptionapi` (library).
+
+**Sequência de handshake:**
+1. Client → TCP/TLS → URL `wss://demo-api-eu.po.market/socket.io/?EIO=4&transport=websocket`
+2. Server → `0{...}` (EIO OPEN)
+3. Client → `40` (SIO CONNECT)
+4. Server → `40{...}` (SIO CONNECT confirmado)
+5. Client → `42["auth",{...}]` (auth com session/isDemo/uid/platform)
+6. Server → `42["successAuth",...]` ou `42["balance",...]` (auth confirmado)
+7. Server → `41` se auth inválido/expirado (SIO DISCONNECT)
 
 ---
 

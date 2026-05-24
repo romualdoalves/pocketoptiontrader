@@ -289,22 +289,26 @@ class PocketOptionConnector:
 
             elif message.startswith("40"):
                 # Socket.IO CONNECT confirmado — autenticar
-                # Tenta formato "session" (ChipaDevTeam / ci_session cookie) primeiro.
-                # O "sessionToken" é vinculado ao IP do browser — não funciona de VPS.
+                # Formato correto: {"session":"<token>","isDemo":0/1,"uid":<int>,"platform":2}
+                # (ChipaDevTeam/PocketOptionAPI e outros projetos open-source confirmam este formato)
                 logger.info("Socket.IO conectado — enviando auth")
-                # Formato exato do browser (agora com credenciais reais).
-                # As tentativas anteriores com sessionToken tinham uid/secret placeholders.
-                url_path = ("cabinet/demo-quick-high-low"
-                            if self._demo else "cabinet/quick-high-low")
+                try:
+                    uid_int = int(self._uid)
+                except (ValueError, TypeError):
+                    uid_int = self._uid
                 auth = json.dumps(["auth", {
-                    "sessionToken": self._secret,
-                    "uid":          self._uid,
-                    "lang":         "en",
-                    "currentUrl":   url_path,
-                    "isChart":      1,
+                    "session":  self._secret,
+                    "isDemo":   _DEMO_VALUE[self._demo],
+                    "uid":      uid_int,
+                    "platform": 2,
                 }], separators=(',', ':'))
                 logger.info("[WS send] 42%s", auth)
                 ws.send(f"42{auth}")
+
+            elif message.startswith("41"):
+                # Socket.IO DISCONNECT — servidor rejeitou (auth inválido/expirado)
+                logger.warning("Socket.IO DISCONNECT (41) recebido — auth rejeitado")
+                self._connect_evt.set()
 
             elif message.startswith("42"):
                 # Socket.IO EVENT
@@ -324,8 +328,11 @@ class PocketOptionConnector:
         self._connect_evt.set()
 
     def _on_close(self, ws, code, msg) -> None:
+        if ws is not self._ws:
+            return
         self._connected = False
-        logger.info("WebSocket fechado (code=%s): %s", code, msg)
+        logger.info("WebSocket fechado (code=%s msg=%s)", code, msg)
+        self._connect_evt.set()
 
     # ── Despacho de eventos ───────────────────────────────────────────────────
 
