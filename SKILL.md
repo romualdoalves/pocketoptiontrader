@@ -3,26 +3,30 @@ name: pocketoptiontrader
 description: |
   PocketOptionTrader - Bot de trading de opções binárias na plataforma PocketOption.
 
-  Migração completa do AlpacaTrader (spot crypto) para PocketOption (opções binárias).
-  Todas as estratégias originais do Alpaca são mantidas com a camada de execução
-  substituída por um conector WebSocket PocketOption.
+  Estratégia Principal: BOT FAREJADOR DE FAIXA (Range Sniper)
+    - Coloca CALL + PUT na mesma janela de expiração de 1 minuto
+    - "Zona de ganho duplo": preço entre P1 e P2 → ambas as ordens ganham
+    - Ambas perdem é IMPOSSÍVEL matematicamente (P1 < P2)
+    - Break-even: apenas 8.1% de ciclos com duplo ganho (payout 85%)
+    - Ativo: EURUSD_otc | Stake: $1 | Expiração: 1 minuto
 
-  Estratégias ativas:
-    - Estratégia 2 "Liquidity Sentinel" (BTCUSD, EURUSD - 5min expiry) — adaptada para binário
-    - Estratégia 3 "AI Allocator" (multi-asset, LSTM alpha, Kelly sizing) — adaptada para binário
+  Estratégias herdadas do Alpaca (mantidas):
+    - Estratégia 2 "Liquidity Sentinel" — Volume Profile + Z-Score
+    - Estratégia 3 "AI Allocator" — LSTM alpha, Kelly sizing
     - 25+ estratégias modulares no TraderDev backend
 
   Implementações:
-    1. STANDALONE  (src/po_intraday_trader.py + scheduler.py) — runner principal
-    2. TRADERDEV   (TraderDev/ — FastAPI + React + PostgreSQL) — UI web completa
+    1. RANGE SNIPER (src/bot_runner.py + app_streamlit.py) — ATIVO
+    2. TRADERDEV    (TraderDev/ — FastAPI + React + PostgreSQL) — em desenvolvimento
 
   Deploy:
-    - Local: Windows (scheduler + .bat scripts)
+    - Local: run_range_sniper.bat (Windows)
     - Produção: pocketoption.tradixio.com (VPS Hostinger KVM4, Docker + Traefik)
+    - DB: PostgreSQL pocketoption / crypto / crypto
 
-  Use este skill quando perguntar sobre: bot PocketOption, Estratégia 2/3, Liquidity
-  Sentinel, Defensive Allocator, LSTM, Volume Profile, Engine A/B, Kelly criterion,
-  win rate circuit breaker, conector WebSocket, deploy VPS, Traefik.
+  Use este skill quando perguntar sobre: bot PocketOption, Range Sniper, Farejador
+  de Faixa, sincronização de expiração, zona de ganho duplo, t1/t2/t3, EURUSD_otc,
+  conector WebSocket, edge cases A/B/C/D, Streamlit UI, deploy VPS, Traefik.
 ---
 
 # PocketOptionTrader — Documentação do Projeto
@@ -84,60 +88,114 @@ PocketOptionTrader/
 ├── SKILL.md                           # Esta documentação
 ├── PLAN.md                            # Plano detalhado de migração
 ├── requirements.txt
-├── scheduler.py                       # Runner 5-min (PocketOption)
-├── run_po_bot.bat                      # Lançamento Windows
-├── docker-compose.yml                 # Stack completo
+├── app_streamlit.py                   # Painel de controle (UI)
+├── run_range_sniper.bat                # Lançamento Windows
+├── docker-compose.yml                 # Stack: bot + streamlit + postgres
 ├── docker-compose.traefik.yml         # Overlay produção (VPS + Traefik)
-├── .github/workflows/ci.yml           # CI básico
+├── Dockerfile.bot                     # Container do bot runner
+├── Dockerfile.streamlit               # Container da UI
+├── .github/workflows/ci.yml           # CI básico (lint + testes)
 │
 ├── src/
 │   ├── pocket_option/                 # Camada core PocketOption
-│   │   ├── connector.py               # WebSocket auth + lifecycle
-│   │   ├── data_feed.py               # Candles OHLCV em tempo real
-│   │   └── trade_manager.py           # place_trade(), get_result()
+│   │   ├── __init__.py
+│   │   ├── connector.py               # WebSocket auth + lifecycle (SSID)
+│   │   ├── data_feed.py               # Preço atual + candles OHLCV
+│   │   └── trade_manager.py           # place_trade(), wait_for_result()
 │   │
-│   ├── po_intraday_trader.py          # Estratégia 2 binária (ATIVO)
-│   ├── intraday_trader.py             # Estratégia 2 original Alpaca (REFERÊNCIA)
+│   ├── strategies/
+│   │   ├── __init__.py
+│   │   └── range_sniper.py            # BOT FAREJADOR DE FAIXA (ATIVO)
+│   │
+│   ├── db/
+│   │   ├── __init__.py
+│   │   ├── models.py                  # Configuracao, CicloOperacao (SQLAlchemy)
+│   │   └── session.py                 # get_session(), init_db()
+│   │
+│   ├── bot_runner.py                  # Processo principal do bot
+│   ├── intraday_trader.py             # Estratégia 2 Alpaca (referência)
 │   ├── trade_logger.py                # Persistência JSONL
-│   ├── reward_function.py             # Recompensa win/loss binário
-│   ├── regime_detector.py             # Detecção de regime
 │   ├── evolve.py                      # Level 4A — Evolution Strategies
 │   ├── bayesian_optimize.py           # Level 4B — Optuna
 │   ├── meta_optimizer.py              # Level 4D — Claude API meta-review
-│   └── strategy3/
-│       ├── po_executor.py             # Execução binária multi-asset
-│       ├── strategy3_main.py          # Orquestrador (usa po_executor)
-│       ├── lstm_alpha.py              # LSTM PyTorch (sinais inalterados)
-│       ├── train_lstm.py              # Treino do LSTM
-│       ├── allocator.py               # Kelly criterion por ativo
-│       ├── risk_manager.py            # Drawdown tiers + win rate breaker
-│       ├── macro_filter.py            # Binance funding rate + OI
-│       ├── universe.py                # Pares PocketOption
-│       ├── indicators.py              # EMA, RSI, MACD, VWAP, ATR
-│       └── state.py                   # Estado: win/loss streaks, equity
+│   └── strategy3/                     # Estratégia 3 Alpaca (referência)
 │
 ├── config/
-│   ├── pocket_option_params.json      # Config opções binárias
 │   ├── strategy_params.json
 │   └── population.json
 │
 ├── logs/
-│   ├── po_trade_log.jsonl             # Log de apostas binárias
-│   └── scheduler.log
+│   └── bot_runner.log
 │
-└── TraderDev/
+└── TraderDev/                         # UI full-stack (em desenvolvimento)
     └── backend/
-        ├── exchanges/
-        │   ├── base.py
-        │   ├── pocket_option.py       # Adapter PocketOption
-        │   ├── alpaca.py              # Mantido (referência)
-        │   └── factory.py
-        └── strategies/               # 25+ estratégias (inalteradas)
+        └── strategies/               # 25+ estratégias modulares
 ```
 
 ---
 
-## 4. Estratégia 2: Liquidity Sentinel → Binário (5 fases)
+## 4. Estratégia Principal: Bot Farejador de Faixa (Range Sniper)
+
+Fonte: `src/strategies/range_sniper.py` | Runner: `src/bot_runner.py`
+
+### Matemática da Zona de Ganho Duplo
+
+```
+Payout 85%, stake $1/ordem, risco total $2 por ciclo:
+
+  Ambos ganham (preço entre P1 e P2): +$0.85 × 2 = +$1.70  ✅
+  Um ganha (preço > P2 ou < P1):      +$0.85 − $1 = −$0.15
+  Ambos perdem:                        IMPOSSÍVEL (P1 < P2)
+
+Break-even: P(ambos ganham) > 0.15 / 1.85 = 8.1%
+```
+
+### Fluxo do ciclo (janela de 1 minuto)
+
+```
+t0 → alinha ao início do novo candle M1
+t1 → aguarda 10s (entry_wait_seconds), lê direção do candle
+   → coloca Ordem 1 (CALL se preço subiu, PUT se caiu)
+t1..t3-15s → monitora preço; quando atinge pip_distance (3 pips)
+           → coloca Ordem 2 (direção oposta) com MESMO t3
+t3 → ambas as ordens expiram no mesmo timestamp de minuto
+```
+
+### Edge Cases do PRD
+
+| Caso | Cenário | Tratamento |
+|------|---------|-----------|
+| **A** | Ordem 2 rejeitada pela plataforma | Alerta, entra em espera até t3 |
+| **B** | Payout caiu abaixo do mínimo antes de Ordem 2 | Aborta Ordem 2 |
+| **C** | Menos de 15s para expiração | Bloqueia Ordem 2 |
+| **D** | WebSocket desconectado | Congela, reconecta em loop exponencial |
+
+### Sincronização de expiração (t3)
+
+Na PocketOption, `expirations_mode=1` (1 minuto) expira no próximo limite
+de minuto inteiro. Tanto Ordem 1 (t1) quanto Ordem 2 (t2), se colocadas
+no mesmo minuto, expiram exatamente em t3 = próximo `:00`.
+
+```python
+t3 = math.ceil(time.time() / 60) * 60  # ex: 10:00:45 → t3 = 10:01:00
+```
+
+### Configuração padrão
+
+```json
+{
+  "asset": "EURUSD_otc",
+  "stake": 1.0,
+  "min_payout": 0.85,
+  "pip_distance": 0.0003,
+  "entry_wait_seconds": 10,
+  "min_seconds_to_expiry": 15
+}
+```
+
+---
+
+## 5. Estratégia 2: Liquidity Sentinel → Binário (5 fases)
 
 Fonte: `src/po_intraday_trader.py` (lógica de sinal idêntica ao original).
 

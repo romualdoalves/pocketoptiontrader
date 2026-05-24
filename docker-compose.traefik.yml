@@ -1,0 +1,47 @@
+# Overlay de produção para VPS Hostinger KVM4 com Traefik pré-instalado.
+# Uso: docker compose -f docker-compose.yml -f docker-compose.traefik.yml up -d
+#
+# Pré-requisitos no VPS:
+#   - Traefik rodando com network "traefik_net" e certresolver "letsencrypt"
+#   - DNS de pocketoption.tradixio.com apontando para o IP do VPS
+#   - Arquivo .env preenchido com credenciais PocketOption
+
+services:
+
+  streamlit:
+    ports: []   # Remover exposição direta de porta (Traefik assume o roteamento)
+    labels:
+      - "traefik.enable=true"
+
+      # Router HTTP → redireciona para HTTPS
+      - "traefik.http.routers.potrader-http.rule=Host(`pocketoption.tradixio.com`)"
+      - "traefik.http.routers.potrader-http.entrypoints=web"
+      - "traefik.http.routers.potrader-http.middlewares=https-redirect"
+
+      # Router HTTPS
+      - "traefik.http.routers.potrader.rule=Host(`pocketoption.tradixio.com`)"
+      - "traefik.http.routers.potrader.entrypoints=websecure"
+      - "traefik.http.routers.potrader.tls.certresolver=letsencrypt"
+
+      # Service
+      - "traefik.http.services.potrader.loadbalancer.server.port=8501"
+
+      # Middleware de redirecionamento HTTPS
+      - "traefik.http.middlewares.https-redirect.redirectscheme.scheme=https"
+      - "traefik.http.middlewares.https-redirect.redirectscheme.permanent=true"
+    networks:
+      - default
+      - traefik_net
+
+  postgres:
+    # Postgres não expõe porta externamente em produção
+    networks:
+      - default
+
+  bot:
+    networks:
+      - default
+
+networks:
+  traefik_net:
+    external: true   # Rede do Traefik já existente no VPS
