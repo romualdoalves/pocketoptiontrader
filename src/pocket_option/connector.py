@@ -99,17 +99,31 @@ class PocketOptionConnector:
     # ── Ciclo de vida ─────────────────────────────────────────────────────────
 
     def connect(self) -> None:
-        self._connect_evt.clear()
-        self._connected = False
-
         headers = _BROWSER_HEADERS + [f"Cookie: ci_session={self._ssid}"]
         urls = _WS_URLS_DEMO if self._demo else _WS_URLS_REAL
 
-        connected = False
+        logger.info(
+            "Auth debug — ssid_len=%d uid=%r secret_len=%d demo=%s",
+            len(self._ssid), self._uid, len(self._secret), self._demo,
+        )
+
         for url in urls:
+            # Aguarda thread anterior encerrar antes de tentar próxima URL
+            if self._ws_thread and self._ws_thread.is_alive():
+                try:
+                    if self._ws:
+                        self._ws.close()
+                except Exception:
+                    pass
+                self._ws_thread.join(timeout=5)
+
+            # Limpa estado para esta tentativa
+            self._connect_evt.clear()
+            self._connected = False
+
             try:
                 logger.info("Tentando conectar em %s (demo=%s)", url, self._demo)
-                self._ws = websocket.WebSocketApp(
+                ws = websocket.WebSocketApp(
                     url,
                     header=headers,
                     on_open=self._on_open,
@@ -117,35 +131,34 @@ class PocketOptionConnector:
                     on_error=self._on_error,
                     on_close=self._on_close,
                 )
+                self._ws = ws
                 self._ws_thread = threading.Thread(
-                    target=self._ws.run_forever,
+                    target=ws.run_forever,
                     kwargs={"sslopt": {"cert_reqs": ssl.CERT_NONE},
                             "ping_interval": 20,
                             "ping_timeout": 10},
                     daemon=True,
-                    name="ws-pocketoption",
+                    name=f"ws-po-{url.split('/')[2]}",
                 )
                 self._ws_thread.start()
 
                 if self._connect_evt.wait(timeout=self.CONNECT_TIMEOUT):
                     if self._connected:
-                        connected = True
-                        break
-                    logger.warning("Auth falhou em %s — tentando próximo", url)
+                        logger.info("PocketOption conectada via %s", url)
+                        return
+                    logger.warning("Auth rejeitado em %s — tentando próximo", url)
                 else:
                     logger.warning("Timeout em %s — tentando próximo", url)
 
-                self._ws.close()
-                if self._ws_thread.is_alive():
-                    self._ws_thread.join(timeout=3)
+                try:
+                    ws.close()
+                except Exception:
+                    pass
 
             except Exception as exc:
                 logger.warning("Falha em %s: %s", url, exc)
 
-        if not connected:
-            raise ConnectionError("Não foi possível conectar à PocketOption via WebSocket")
-
-        logger.info("PocketOption conectada (demo=%s, uid=%s)", self._demo, self._uid)
+        raise ConnectionError("Não foi possível conectar à PocketOption via WebSocket")
 
     def disconnect(self) -> None:
         self._connected = False
@@ -297,8 +310,10 @@ class PocketOptionConnector:
             logger.debug("Erro ao processar mensagem: %s — raw=%s", exc, message[:100])
 
     def _on_error(self, ws, error) -> None:
+        if ws is not self._ws:
+            return  # ignora callbacks de conexões órfãs
         logger.error("Erro WebSocket: %s", error)
-        self._connect_evt.set()  # desbloqueia connect() em caso de erro
+        self._connect_evt.set()
 
     def _on_close(self, ws, code, msg) -> None:
         self._connected = False
